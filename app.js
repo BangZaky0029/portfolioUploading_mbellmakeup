@@ -554,6 +554,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    const FALLBACK_BROKEN_IMAGE = "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22100%22%20height%3D%22100%22%20viewBox%3D%220%200%20100%20100%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23F0EAE6%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20fill%3D%22%23999%22%20font-size%3D%2212%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3EFoto%20Rusak%3C%2Ftext%3E%3C%2Fsvg%3E";
+
     elements.photoGrid.innerHTML = photos.map(photo => {
       const title = photo.title || 'Tanpa Judul';
       const category = photo.category || 'uncategorized';
@@ -571,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           </div>
           <div class="photo-media-wrapper">
-            <img class="photo-img" src="${imgUrl}" alt="${title}" loading="lazy" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\' viewBox=\'0 0 100 100\'><rect width=\'100\' height=\'100\' fill=\'%23F0EAE6\'/><text x=\'50\' y=\'50\' fill=\'%23999\' font-size=\'12\' text-anchor=\'middle\' dominant-baseline=\'middle\'>Foto Rusak</text></svg>'">
+            <img class="photo-img" src="${imgUrl}" alt="${title}" loading="lazy" onerror="this.onerror=null;this.src='${FALLBACK_BROKEN_IMAGE}';">
             <span class="photo-badge">${category}</span>
             <div class="photo-actions-overlay">
               <button class="photo-action-btn zoom-btn" title="Perbesar / Lightbox" data-id="${photo.id}">
@@ -628,8 +630,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         touchTimer = setTimeout(() => {
           isLongPressTriggered = true;
-          if (navigator.vibrate) {
-            try { navigator.vibrate(50); } catch (_) {}
+          if (typeof navigator.vibrate === 'function') {
+            try {
+              if (!navigator.userActivation || navigator.userActivation.hasBeenActive) {
+                navigator.vibrate(50);
+              }
+            } catch (_) {}
           }
           if (!state.isSelectionMode) {
             enterSelectionMode(photoId);

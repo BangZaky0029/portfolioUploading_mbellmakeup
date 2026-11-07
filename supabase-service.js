@@ -337,10 +337,8 @@
 
     /**
      * Ubah kategori banyak foto sekaligus (Bulk Category Update & Storage Sync)
-     * Sinkronisasi data center:
-     * 1. Coba panggil RPC PostgreSQL (jika skrip SQL sudah di-run di Supabase)
-     * 2. Atau pindahkan file fisik di Storage via API & update public.images (kategori + imageUrl)
-     * 3. Fallback: update kolom category di public.images jika storage move tidak diizinkan
+     * Menggunakan API resmi Supabase Storage (.move()) agar file fisik di S3 benar-benar berpindah,
+     * lalu memperbarui kolom category & imageUrl di tabel public.images.
      * @param {Array<number|string|{id: number|string, imageUrl?: string, category?: string}>} photosOrIds
      * @param {string} newCategory - Nama kategori tujuan baru
      */
@@ -352,7 +350,7 @@
         return { success: true, updatedCount: 0, category: cleanCategory };
       }
 
-      // Normalisasi format input (bisa array of objects atau array of IDs)
+      // Normalisasi input
       const isObjectArray = typeof photosOrIds[0] === 'object' && photosOrIds[0] !== null;
       const ids = photosOrIds.map(item => (typeof item === 'object' ? item.id : item))
         .map(id => (isNaN(id) ? id : Number(id)))
@@ -360,81 +358,79 @@
 
       if (ids.length === 0) return { success: true, updatedCount: 0, category: cleanCategory };
 
-      // METODE 1: Coba gunakan Stored Procedure / RPC PostgreSQL di Supabase (Tercepat & Atomik di Server)
-      try {
-        const { data: rpcData, error: rpcErr } = await client.rpc('move_photos_category', {
-          p_photo_ids: ids,
-          p_new_category: cleanCategory
-        });
+      // Jika hanya array ID yang diberikan, ambil data foto dari DB terlebih dahulu
+      let photoList = photosOrIds;
+      if (!isObjectArray) {
+        const { data: fetched, error: fetchErr } = await client
+          .from(TABLE_NAME)
+          .select('id, category, imageUrl')
+          .in('id', ids);
 
-        if (!rpcErr && rpcData) {
-          console.log(`[SupabaseService] Berhasil memindahkan ${rpcData.length} foto via RPC Postgres.`);
-          return { success: true, updatedCount: rpcData.length, category: cleanCategory, method: 'rpc' };
-        }
-      } catch (rpcEx) {
-        // RPC belum dipasang di SQL Editor, lanjutkan ke METODE 2 (Client SDK)
+        if (fetchErr) throw new Error(`Gagal mengambil data foto: ${fetchErr.message}`);
+        photoList = fetched || [];
       }
 
-      // METODE 2: Client-side Storage Move + DB Update
       let totalUpdated = 0;
+      const errors = [];
 
-      if (isObjectArray) {
-        // Jika UI mengirim array objek foto lengkap
-        for (const photo of photosOrIds) {
-          try {
-            const oldStoragePath = extractStoragePath(photo.imageUrl);
-            let newImageUrl = null;
+      for (const photo of photoList) {
+        try {
+          const oldStoragePath = extractStoragePath(photo.imageUrl);
+          let newImageUrl = photo.imageUrl;
 
-            if (oldStoragePath && photo.category !== cleanCategory) {
-              const fileName = oldStoragePath.substring(oldStoragePath.lastIndexOf('/') + 1);
-              const newStoragePath = `${cleanCategory}/${fileName}`;
+          // 1. Pindahkan file fisik di Supabase Storage via Storage API
+          if (oldStoragePath && photo.category && photo.category !== cleanCategory) {
+            const fileName = oldStoragePath.substring(oldStoragePath.lastIndexOf('/') + 1);
+            const newStoragePath = `${cleanCategory}/${fileName}`;
 
-              // Pindahkan file di storage bucket
-              const { error: moveErr } = await client.storage
+            // Pindahkan file fisik di S3/Storage bucket
+            const { error: moveErr } = await client.storage
+              .from(BUCKET_NAME)
+              .move(oldStoragePath, newStoragePath);
+
+            if (!moveErr) {
+              const { data: urlData } = client.storage
                 .from(BUCKET_NAME)
-                .move(oldStoragePath, newStoragePath);
-
-              if (!moveErr) {
-                const { data: urlData } = client.storage
-                  .from(BUCKET_NAME)
-                  .getPublicUrl(newStoragePath);
+                .getPublicUrl(newStoragePath);
+              if (urlData && urlData.publicUrl) {
                 newImageUrl = urlData.publicUrl;
-              } else {
-                console.warn(`[Storage Move Skipped ID: ${photo.id}]`, moveErr.message);
               }
+            } else {
+              // Jika move gagal di storage (misal file belum ada atau sudah dipindahkan),
+              // TETAP pertahankan URL foto lama agar gambar TIDAK rusak (404)!
+              console.warn(`[Storage Move Skipped ID ${photo.id}]:`, moveErr.message);
+              newImageUrl = photo.imageUrl;
             }
-
-            const updatePayload = { category: cleanCategory };
-            if (newImageUrl) updatePayload.imageUrl = newImageUrl;
-
-            const { error: updateErr } = await client
-              .from(TABLE_NAME)
-              .update(updatePayload)
-              .eq('id', photo.id);
-
-            if (!updateErr) totalUpdated++;
-          } catch (itemErr) {
-            console.error(`Gagal memindahkan foto ID ${photo.id}:`, itemErr);
           }
-        }
-      } else {
-        // METODE 3 (Fallback jika hanya ID): Batch update kolom category
-        const chunkSize = 100;
-        for (let i = 0; i < ids.length; i += chunkSize) {
-          const chunkIds = ids.slice(i, i + chunkSize);
-          const { error } = await client
+
+          // 2. Perbarui baris tabel public.images (category & imageUrl)
+          const targetId = Number(photo.id) || photo.id;
+          const updatePayload = {
+            category: cleanCategory,
+            imageUrl: newImageUrl
+          };
+
+          const { error: updateErr } = await client
             .from(TABLE_NAME)
-            .update({ category: cleanCategory })
-            .in('id', chunkIds);
+            .update(updatePayload)
+            .eq('id', targetId);
 
-          if (error) {
-            throw new Error(`Gagal mengubah kategori foto: ${error.message}`);
+          if (updateErr) {
+            throw new Error(`Gagal update tabel database (${updateErr.message})`);
           }
-          totalUpdated += chunkIds.length;
+
+          totalUpdated++;
+        } catch (itemErr) {
+          console.error(`Gagal memindahkan foto ID ${photo.id}:`, itemErr);
+          errors.push(itemErr.message);
         }
       }
 
-      return { success: true, updatedCount: totalUpdated, category: cleanCategory, method: 'client' };
+      if (errors.length > 0 && totalUpdated === 0) {
+        throw new Error(errors[0]);
+      }
+
+      return { success: true, updatedCount: totalUpdated, category: cleanCategory };
     },
 
     /**

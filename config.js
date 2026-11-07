@@ -19,7 +19,6 @@ window.CONFIG = {
     'preWedding',
     'siraman',
     'wisuda',
-    'testimonials'
   ]
 };
 
