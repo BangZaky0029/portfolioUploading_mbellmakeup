@@ -1,0 +1,31 @@
+/**
+ * MBell MakeUp - Design Tokens & CSS Variables
+ * Theme: Luxury Rosewood & Modern Clean Admin
+ */
+
+:root {
+  --primary: #9E5A54;
+  --primary-hover: #864641;
+  --primary-light: #F7EFEB;
+  --primary-border: #E8D5CE;
+  --gold: #D4AF37;
+  --gold-hover: #BF9B27;
+  --bg-main: #FAF7F5;
+  --bg-card: #FFFFFF;
+  --text-dark: #2B2120;
+  --text-muted: #7E7270;
+  --border-light: #ECE4E0;
+  --danger: #D94848;
+  --danger-hover: #B83535;
+  --danger-light: #FDF0F0;
+  --success: #28A745;
+  --success-light: #EBF8EE;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --shadow-sm: 0 2px 6px rgba(158, 90, 84, 0.05);
+  --shadow-md: 0 8px 24px rgba(158, 90, 84, 0.08);
+  --shadow-lg: 0 16px 40px rgba(158, 90, 84, 0.12);
+  --transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+

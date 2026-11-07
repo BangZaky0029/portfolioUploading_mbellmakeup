@@ -1,0 +1,9 @@
+{
+  "name": "mbell-portfolio-uploading",
+  "version": "1.0.0",
+  "description": "Portfolio Upload & Management Studio for MBell MakeUp",
+  "scripts": {
+    "build": "node build-config.js"
+  }
+}
+

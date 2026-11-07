@@ -1,0 +1,184 @@
+/**
+ * MBell MakeUp - Global Responsive Breakpoints & Device Adaptations
+ * Desktop, Tablet, Mobile (Landscape & Portrait)
+ */
+
+/* Breakpoint: Desktop Kecil / Tablet Landscape (<= 1024px) */
+@media (max-width: 1024px) {
+  .main-wrapper {
+    grid-template-columns: 320px 1fr;
+    gap: 1.25rem;
+  }
+}
+
+/* Breakpoint: Tablet Portrait & Mobile Besar (<= 860px) */
+@media (max-width: 860px) {
+  /* Header Statis di Mobile (tetap di paling atas, tidak floating/sticky saat scroll) */
+  .header {
+    position: static;
+    top: auto;
+  }
+  .main-wrapper {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+  }
+  .sidebar-panel {
+    position: static;
+  }
+  .photo-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+  .header-stats {
+    display: none;
+  }
+}
+
+/* Touch Device Support (Perangkat Layar Sentuh tanpa Cursor Hover) */
+@media (hover: none) {
+  .photo-actions-overlay {
+    opacity: 0.95;
+    transform: none;
+  }
+}
+
+/* Breakpoint: Mobile Medium (<= 600px) */
+@media (max-width: 600px) {
+  .gallery-section {
+    padding-bottom: 5rem; /* Ruang agar floating bulk bar tidak menutupi kartu terbawah saat di-scroll */
+  }
+
+  .gallery-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .gallery-title-group {
+    gap: 0.35rem;
+  }
+
+  .selection-hint {
+    font-size: 0.68rem;
+    padding: 2px 7px;
+  }
+
+  .bulk-action-bar {
+    width: calc(100% - 1.25rem);
+    max-width: 440px;
+    border-radius: 999px;
+    padding: 0.45rem 0.65rem;
+    bottom: 1rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  }
+
+  .bulk-action-content {
+    justify-content: space-between;
+    width: 100%;
+    gap: 0.35rem;
+  }
+
+  .bulk-action-info {
+    font-size: 0.78rem;
+    gap: 0.35rem;
+    flex-shrink: 0;
+  }
+
+  .bulk-check-badge {
+    width: 18px;
+    height: 18px;
+    font-size: 0.7rem;
+  }
+
+  .bulk-action-btns {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .bulk-action-btns .btn {
+    padding: 0.35rem 0.55rem;
+    font-size: 0.72rem;
+  }
+
+  /* Di Mobile: Jadikan Tombol Ubah Kategori dan Hapus sebagai Icon Bulat Minimalis */
+  .bulk-btn-icon-mobile {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .bulk-btn-icon-mobile svg {
+    width: 15px;
+    height: 15px;
+    margin: 0 !important;
+  }
+
+  .bulk-btn-text {
+    display: none !important;
+  }
+
+  .toast-container {
+    left: 1rem;
+    right: 1rem;
+    bottom: 4.5rem;
+    max-height: 220px;
+    overflow: hidden;
+  }
+}
+
+/* Breakpoint: Mobile Standar (<= 480px) */
+@media (max-width: 480px) {
+  .header {
+    padding: 0.75rem 1rem;
+  }
+
+  .photo-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .photo-actions-overlay {
+    opacity: 1;
+    transform: none;
+  }
+
+  .modal-content {
+    max-height: 95vh;
+    border-radius: 16px;
+  }
+}
+
+/* Breakpoint: Mobile Kecil / Mini Screen (<= 380px) */
+@media (max-width: 380px) {
+  .bulk-action-bar {
+    width: calc(100% - 0.75rem);
+    padding: 0.4rem 0.5rem;
+  }
+
+  .bulk-action-info {
+    font-size: 0.72rem;
+  }
+
+  .bulk-action-btns {
+    gap: 0.25rem;
+  }
+
+  .bulk-action-btns .btn {
+    padding: 0.3rem 0.45rem;
+    font-size: 0.68rem;
+  }
+
+  .bulk-btn-icon-mobile {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+  }
+}
+

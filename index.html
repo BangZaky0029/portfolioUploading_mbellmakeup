@@ -72,7 +72,7 @@
             <!-- Diisi secara dinamis -->
           </select>
           <small style="font-size:0.72rem; color:var(--text-muted); display:block; margin-top:4px;">
-            📁 File otomatis disimpan di folder: <code>images_mbell/[kategori]/</code>
+            📁 File otomatis disimpan di folder: <code><span id="uiBucketPath">images_mbell</span>/[kategori]/</code>
           </small>
         </div>
 
@@ -86,14 +86,14 @@
             </svg>
           </div>
           <h3>Tarik & Lepas Foto di Sini</h3>
-          <p>atau klik untuk pilih file (Format gambar apa pun &bull; Maks. 10MB)</p>
+          <p id="uiDropzoneText">atau klik untuk pilih file (Format gambar apa pun &bull; Maks. <span id="uiMaxFileSizeText">30MB</span>)</p>
         </div>
 
         <!-- Humane Upload Limit Tip -->
         <div class="upload-tip-card">
           <div class="upload-tip-icon">💡</div>
           <div class="upload-tip-text">
-            <strong>Maksimal 20 foto per upload & maks. 10MB per foto</strong>.
+            <strong id="uiUploadTipTitle">Maksimal <span id="uiTipMaxBatch">20</span> foto per upload & maks. <span id="uiTipMaxSize">30MB</span> per foto</strong>.
             <small>Semua format foto otomatis dikonversi ke WebP (.webp) agar ringan, tajam & hemat kuota.</small>
           </div>
         </div>
@@ -547,16 +547,43 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Scripts -->
-  <!-- Supabase JS Client (v2) via CDN -->
+  <!-- 1. Supabase JS Client (v2) via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- App Configuration -->
+
+  <!-- 2. App Configuration -->
   <script src="config.js"></script>
-  <!-- Supabase Service Operations -->
-  <script src="supabase-service.js"></script>
-  <!-- Image WebP Converter & Optimization Engine -->
-  <script src="image-converter.js"></script>
-  <!-- Application Controller -->
-  <script src="app.js"></script>
+  <script src="js/config.js"></script>
+
+  <!-- 3. Core Layer (Pub/Sub & State) -->
+  <script src="js/core/EventEmitter.js"></script>
+  <script src="js/core/StateStore.js"></script>
+
+  <!-- 4. Utils Layer (Formatters, WakeLock, ImageConverter) -->
+  <script src="js/utils/Formatters.js"></script>
+  <script src="js/utils/WakeLockManager.js"></script>
+  <script src="js/utils/ImageConverter.js"></script>
+
+  <!-- 5. Services Layer (Supabase, Storage, Photos, Categories) -->
+  <script src="js/services/SupabaseClient.js"></script>
+  <script src="js/services/StorageService.js"></script>
+  <script src="js/services/PhotoService.js"></script>
+  <script src="js/services/CategoryService.js"></script>
+
+  <!-- 6. Components Layer (UI Presentation) -->
+  <script src="js/components/Toast.js"></script>
+  <script src="js/components/ModalManager.js"></script>
+  <script src="js/components/Lightbox.js"></script>
+  <script src="js/components/DropzoneUploader.js"></script>
+  <script src="js/components/GalleryView.js"></script>
+  <script src="js/components/CategoryNav.js"></script>
+
+  <!-- 7. Controllers Layer (Workflow & Coordination) -->
+  <script src="js/controllers/SelectionManager.js"></script>
+  <script src="js/controllers/UploadManager.js"></script>
+  <script src="js/controllers/AppController.js"></script>
+
+  <!-- 8. Main Application Entry Point -->
+  <script src="js/main.js"></script>
 </body>
 
 </html>

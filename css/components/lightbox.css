@@ -1,0 +1,44 @@
+/**
+ * MBell MakeUp - Lightbox Fullscreen Viewer Component
+ */
+
+.lightbox-modal .modal-content {
+  max-width: 900px;
+  background: rgba(20, 20, 20, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #FFF;
+}
+
+.lightbox-modal .modal-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.lightbox-modal .modal-header h3 {
+  color: #FFF;
+}
+
+.lightbox-modal .modal-close-btn {
+  color: #BBB;
+}
+
+.lightbox-modal .modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFF;
+}
+
+.lightbox-img-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: 75vh;
+  padding: 1rem;
+}
+
+.lightbox-img {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+

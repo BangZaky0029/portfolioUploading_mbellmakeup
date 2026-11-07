@@ -25,17 +25,46 @@ python -m http.server 3000
 
 ---
 
-## 📁 Struktur Folder Proyek
+## 📁 Struktur Folder Proyek (Modular OOP Architecture)
 ```
 portfolioUploading_mbellmakeup/
-├── index.html          # Markup terstruktur (Navbar, Drag-Drop Zone, Staging, Gallery, Modals)
-├── style.css           # Styling modern & responsif (Luxury Rosewood & Gold MBell)
-├── config.js           # Konfigurasi Supabase URL, Anon Key, Bucket, & Default Categories
-├── image-converter.js  # Generator konversi modular format gambar apa pun ke WebP (.webp)
-├── supabase-service.js # Service layer operasi CRUD Database & Storage Supabase
-├── app.js              # State management, drag-drop handling, batch upload, & modal controller
+├── index.html              # Markup terstruktur (Navbar, Drag-Drop Zone, Staging, Gallery, Modals)
+├── style.css               # Styling modern & responsif (Luxury Rosewood & Gold MBell)
+├── config.js               # Konfigurasi Supabase URL, Anon Key, Bucket, & Default Categories
 ├── supabase_sync_setup.sql # Skrip SQL lengkap untuk Supabase SQL Editor (RLS, Index, & RPC Sync)
-└── README.md           # Dokumentasi teknis & panduan SQL
+├── README.md               # Dokumentasi teknis & panduan arsitektur
+│
+└── js/                     # Arsitektur Modular Berorientasi Objek (OOP)
+    ├── main.js             # Bootstrap & Entry Point aplikasi
+    ├── config.js           # Konfigurasi ES Module & konstanta upload (10MB, 20 items)
+    │
+    ├── core/               # Pondasi Sistem & State
+    │   ├── EventEmitter.js # Lightweight Pub/Sub event bus
+    │   └── StateStore.js   # Reactive State Manager (single source of truth)
+    │
+    ├── services/           # Data & Network Layer (Supabase API & Storage)
+    │   ├── SupabaseClient.js  # Provider client Supabase & cek koneksi
+    │   ├── StorageService.js  # Upload, delete, move, & get public URL file
+    │   ├── PhotoService.js    # CRUD tabel public.images & sinkronisasi storage
+    │   └── CategoryService.js # Fetch kategori DB, localStorage sync, rename & delete
+    │
+    ├── components/         # View & UI Presentational Components
+    │   ├── ModalManager.js    # Dialog kustom: Alert, Confirm, Prompt
+    │   ├── Toast.js           # Toast notification manager
+    │   ├── Lightbox.js        # Fullscreen image viewer zoom & keyboard controls
+    │   ├── CategoryNav.js     # Tab filter kategori, chips, & count badges
+    │   ├── GalleryView.js     # Grid foto, card renderer, lazy loading, & broken image fallback
+    │   └── DropzoneUploader.js# Dropzone drag-drop, file staging list, & input file trigger
+    │
+    ├── controllers/        # Business Logic & Workflow Coordinators
+    │   ├── AppController.js   # Orchestrator utama inisialisasi aplikasi
+    │   ├── SelectionManager.js# Logika seleksi foto, touch long-press HP, & bulk bottom bar
+    │   └── UploadManager.js   # Antrean batch upload, validasi 10MB, WebP conversion, & wake lock
+    │
+    └── utils/              # Pure Functions & Engines
+        ├── ImageConverter.js  # WebP conversion engine (ekstraksi resolusi & kualitas)
+        ├── Formatters.js      # formatBytes, debounce, sanitizeFileName, extractPath
+        └── WakeLockManager.js # Screen wake-lock API wrapper untuk mobile upload
 ```
 
 ---

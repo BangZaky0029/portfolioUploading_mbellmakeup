@@ -1,0 +1,64 @@
+/**
+ * MBell MakeUp - Button System (Base & Modifiers)
+ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.15rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: var(--transition);
+  outline: none;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #FFF;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  box-shadow: 0 4px 12px rgba(158, 90, 84, 0.25);
+}
+
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #FFF;
+  color: var(--text-dark);
+  border-color: var(--border-light);
+}
+
+.btn-secondary:hover {
+  background: #F8F4F2;
+  border-color: #D8CCC6;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #FFF;
+}
+
+.btn-danger:hover {
+  background: var(--danger-hover);
+}
+
+.btn-sm {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.78rem;
+  border-radius: 6px;
+}
+
+.btn-block {
+  width: 100%;
+}
+

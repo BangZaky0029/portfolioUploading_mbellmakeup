@@ -1,0 +1,22 @@
+# Environment & Secret Credentials
+.env
+.env.local
+.env.*.local
+
+# Local Configuration File with Sensitive Keys
+config.js
+
+# OS Metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor & IDE Directories
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
