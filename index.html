@@ -78,7 +78,7 @@
 
         <!-- Drag & Drop Zone -->
         <div class="dropzone" id="dropzone">
-          <input type="file" id="fileInput" class="file-input" multiple accept="image/png, image/jpeg, image/webp">
+          <input type="file" id="fileInput" class="file-input" multiple accept="image/*">
           <div class="dropzone-icon">
             <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round"
@@ -86,15 +86,15 @@
             </svg>
           </div>
           <h3>Tarik & Lepas Foto di Sini</h3>
-          <p>atau klik untuk pilih file (PNG, JPG, WEBP)</p>
+          <p>atau klik untuk pilih file (Format gambar apa pun &bull; Maks. 10MB)</p>
         </div>
 
         <!-- Humane Upload Limit Tip -->
         <div class="upload-tip-card">
           <div class="upload-tip-icon">💡</div>
           <div class="upload-tip-text">
-            <strong>Maksimal 20 foto per kategori</strong> untuk 1x proses upload.
-            <small>Foto otomatis dioptimasi agar proses cepat, tetap tajam & hemat kuota.</small>
+            <strong>Maksimal 20 foto per upload & maks. 10MB per foto</strong>.
+            <small>Semua format foto otomatis dikonversi ke WebP (.webp) agar ringan, tajam & hemat kuota.</small>
           </div>
         </div>
 
@@ -553,6 +553,8 @@
   <script src="config.js"></script>
   <!-- Supabase Service Operations -->
   <script src="supabase-service.js"></script>
+  <!-- Image WebP Converter & Optimization Engine -->
+  <script src="image-converter.js"></script>
   <!-- Application Controller -->
   <script src="app.js"></script>
 </body>

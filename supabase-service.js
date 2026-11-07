@@ -234,6 +234,7 @@
           .from(BUCKET_NAME)
           .upload(storagePath, file, {
             cacheControl: '3600',
+            contentType: file.type || 'image/webp',
             upsert: false
           });
 

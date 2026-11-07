@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     statusText: document.getElementById('statusText'),
     totalPhotosCount: document.getElementById('totalPhotosCount'),
     totalCategoriesCount: document.getElementById('totalCategoriesCount'),
-    
+
     // Upload Elements
     uploadCategorySelect: document.getElementById('uploadCategorySelect'),
     btnQuickAddCat: document.getElementById('btnQuickAddCat'),
@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.confirmTitle.textContent = title || 'Konfirmasi';
       elements.confirmMessage.textContent = message || '';
       elements.btnConfirmSubmit.textContent = confirmText;
-      
+
       if (isDanger) {
         elements.btnConfirmSubmit.className = 'btn btn-danger';
       } else {
@@ -290,20 +290,21 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================================
-  // Client-side Image Compression Engine
-  // Mengubah foto mentah kamera HP (4-15MB) menjadi foto tajam optimal (250-500KB)
+  // Client-side Image WebP Optimization Engine
+  // Mengonversi foto mentah dari ekstensi apa pun ke .webp (100-350KB)
   // Menjamin upload 12-20 foto selesai dalam beberapa detik di 4G tanpa timeout
   // ==========================================================================
   async function compressImage(file, { maxWidth = 1920, maxHeight = 1920, quality = 0.82 } = {}) {
+    // 1. Gunakan modul ImageConverter jika tersedia
+    if (window.convertToWebP) {
+      return await window.convertToWebP(file, { maxWidth, maxHeight, quality });
+    }
+
     if (!file || !file.type.startsWith('image/') || file.type === 'image/svg+xml') {
       return file;
     }
 
-    // Jika file sudah kecil (< 400KB), tidak perlu dikompres lagi
-    if (file.size <= 400 * 1024) {
-      return file;
-    }
-
+    // 2. Fallback internal jika file image-converter.js tidak termuat
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -324,15 +325,16 @@ document.addEventListener('DOMContentLoaded', () => {
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Format JPEG untuk kompatibilitas maksimal di semua browser smartphone
-          const outputType = 'image/jpeg';
+          const outputType = 'image/webp';
           canvas.toBlob((blob) => {
-            if (!blob || blob.size >= file.size) {
+            if (!blob) {
               resolve(file);
             } else {
-              const newName = file.name.replace(/\.[^/.]+$/, '.jpg');
+              const newName = file.name.replace(/\.[^/.]+$/, '.webp');
               const compressedFile = new File([blob], newName, {
                 type: outputType,
                 lastModified: Date.now()
@@ -439,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderCategorySelects(categories) {
-    const optionsHtml = categories.map(cat => 
+    const optionsHtml = categories.map(cat =>
       `<option value="${cat.name}">${cat.name}</option>`
     ).join('');
 
@@ -493,7 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
     state.selectedPhotoIds.clear();
     state.isSelectionMode = false;
     updateBulkActionBar();
-    
+
     // Update tab visual
     elements.categoryTabsContainer.querySelectorAll('.category-pill').forEach(p => {
       p.classList.toggle('active', p.dataset.category === cat);
@@ -635,7 +637,7 @@ document.addEventListener('DOMContentLoaded', () => {
               if (!navigator.userActivation || navigator.userActivation.hasBeenActive) {
                 navigator.vibrate(50);
               }
-            } catch (_) {}
+            } catch (_) { }
           }
           if (!state.isSelectionMode) {
             enterSelectionMode(photoId);
@@ -777,7 +779,7 @@ document.addEventListener('DOMContentLoaded', () => {
           btn.disabled = true;
           await window.SupabaseService.deletePhoto(photo.id, photo.imageUrl);
           showToast(`Foto "${photo.title}" berhasil dihapus`, 'success');
-          
+
           state.selectedPhotoIds.delete(photo.id);
           updateBulkActionBar();
 
@@ -991,8 +993,8 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.bulkTargetCategorySelect.innerHTML = optionsHtml;
 
     // Tentukan kategori default awal
-    const initialCat = (state.activeCategory !== 'all') 
-      ? state.activeCategory 
+    const initialCat = (state.activeCategory !== 'all')
+      ? state.activeCategory
       : (state.categories[0] ? state.categories[0].name : '');
     elements.bulkTargetCategorySelect.value = initialCat;
 
@@ -1111,35 +1113,71 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const MAX_BATCH_UPLOAD = 20;
+  const MAX_FILE_SIZE_MB = 30;
+  const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024; // Maksimal 10MB per file
 
   function handleSelectedFiles(fileList) {
     if (!fileList || fileList.length === 0) return;
 
-    const validFiles = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+    // Filter file gambar (semua format gambar didukung dan akan dikonversi ke WebP)
+    const validImageExtensions = /\.(jpe?g|png|webp|bmp|gif|tiff|tif|heic|heif|svg|avif)$/i;
+    const validFiles = Array.from(fileList).filter(f =>
+      f.type.startsWith('image/') || validImageExtensions.test(f.name)
+    );
+
     if (validFiles.length === 0) {
       customAlert({
         title: 'Format Tidak Didukung',
-        message: 'Hanya file gambar (PNG, JPG, JPEG, WEBP) yang dapat diunggah ke portofolio MBell MakeUp.',
+        message: 'Hanya file gambar (JPG, PNG, WEBP, BMP, GIF, TIFF, dll) yang dapat diunggah ke portofolio MBell MakeUp.',
         type: 'warning'
       });
       return;
     }
 
-    const currentCount = state.stagedFiles.length;
-    let allowedFiles = validFiles;
+    // Validasi Ukuran Maksimal 10MB per file
+    const oversizedFiles = validFiles.filter(f => f.size > MAX_FILE_SIZE_BYTES);
+    const sizeAllowedFiles = validFiles.filter(f => f.size <= MAX_FILE_SIZE_BYTES);
 
-    if (currentCount + validFiles.length > MAX_BATCH_UPLOAD) {
+    if (oversizedFiles.length > 0) {
+      const oversizedInfo = oversizedFiles
+        .map(f => `• ${f.name} (${formatBytes(f.size)})`)
+        .slice(0, 5)
+        .join('\n');
+      const moreText = oversizedFiles.length > 5 ? `\n...dan ${oversizedFiles.length - 5} file lainnya` : '';
+
+      if (sizeAllowedFiles.length === 0) {
+        customAlert({
+          title: 'File Melebihi Batas 10MB',
+          message: `Semua foto yang Anda pilih melebihi batas maksimal ${MAX_FILE_SIZE_MB}MB per file:\n\n${oversizedInfo}${moreText}\n\nHarap pilih foto dengan ukuran maksimal 10MB.`,
+          type: 'warning'
+        });
+        elements.fileInput.value = '';
+        return;
+      } else {
+        customAlert({
+          title: 'Sebagian File Melebihi 10MB',
+          message: `${oversizedFiles.length} foto dilewati karena melebihi batas maksimal ${MAX_FILE_SIZE_MB}MB:\n\n${oversizedInfo}${moreText}\n\n${sizeAllowedFiles.length} foto lainnya yang memenuhi syarat tetap dimasukkan ke antrean.`,
+          type: 'warning'
+        });
+      }
+    }
+
+    const currentCount = state.stagedFiles.length;
+    let allowedFiles = sizeAllowedFiles;
+
+    if (currentCount + sizeAllowedFiles.length > MAX_BATCH_UPLOAD) {
       const remainingQuota = Math.max(0, MAX_BATCH_UPLOAD - currentCount);
       if (remainingQuota === 0) {
         customAlert({
           title: 'Batas Antrean Tercapai',
-          message: `Maksimal 20 foto per kategori untuk 1x proses upload agar proses cepat dan foto otomatis dioptimasi tanpa lemot. Silakan unggah antrean foto ini terlebih dahulu.`,
+          message: `Maksimal 20 foto per proses upload agar proses cepat dan foto otomatis dikonversi ke WebP tanpa lemot. Silakan unggah antrean foto ini terlebih dahulu.`,
           type: 'warning'
         });
+        elements.fileInput.value = '';
         return;
       }
 
-      allowedFiles = validFiles.slice(0, remainingQuota);
+      allowedFiles = sizeAllowedFiles.slice(0, remainingQuota);
       showToast(`Maksimal 20 foto untuk 1x upload. ${remainingQuota} foto pertama dimasukkan ke antrean.`, 'info');
     }
 
@@ -1173,12 +1211,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     elements.stagingWrapper.style.display = 'block';
-    elements.stagingContainer.innerHTML = state.stagedFiles.map((item) => `
+    elements.stagingContainer.innerHTML = state.stagedFiles.map((item) => {
+      const originalExt = (item.file.name.substring(item.file.name.lastIndexOf('.') + 1) || 'IMG').toUpperCase();
+      return `
       <div class="staged-item" data-id="${item.id}">
         <img class="staged-thumb" src="${item.previewUrl}" alt="Preview">
         <div class="staged-info">
           <input type="text" class="form-input staged-title-input" value="${item.title}" style="padding: 2px 6px; font-size: 0.8rem; margin-bottom: 2px;" placeholder="Judul foto">
-          <div class="staged-size">${formatBytes(item.file.size)} &bull; ${item.file.type.split('/')[1].toUpperCase()}</div>
+          <div class="staged-size">${formatBytes(item.file.size)} &bull; ${originalExt} &rarr; <span style="color:var(--primary); font-weight:600;">WEBP</span></div>
         </div>
         <button type="button" class="staged-remove" data-id="${item.id}" title="Hapus dari antrean">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -1186,7 +1226,8 @@ document.addEventListener('DOMContentLoaded', () => {
           </svg>
         </button>
       </div>
-    `).join('');
+    `;
+    }).join('');
 
     // Listener input title update
     elements.stagingContainer.querySelectorAll('.staged-title-input').forEach((input, index) => {
@@ -1218,7 +1259,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ==========================================================================
-  // Process Batch Upload to Supabase (Dengan Kompresi & Wake Lock)
+  // Process Batch Upload to Supabase (Dengan Kompresi WebP & Wake Lock)
   // ==========================================================================
   elements.btnUploadSubmit.addEventListener('click', async () => {
     if (state.stagedFiles.length === 0 || state.isUploading) return;
@@ -1249,13 +1290,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const percent = Math.round(((i) / total) * 100);
       elements.uploadProgressBar.style.width = `${percent}%`;
       elements.uploadProgressPercent.textContent = `${percent}%`;
-      elements.uploadProgressText.textContent = `Mengoptimasi & mengunggah (${i + 1}/${total}): ${item.file.name}...`;
+      elements.uploadProgressText.textContent = `Mengonversi ke WebP & mengunggah (${i + 1}/${total}): ${item.file.name}...`;
 
       try {
-        // 1. Kompres foto secara otomatis di browser (dari 5-15MB menjadi ~300KB)
+        // 1. Konversi ke WebP dan optimasi foto secara otomatis di browser (dari hingga 10MB menjadi ~150-350KB)
         const optimizedFile = await compressImage(item.file);
 
-        // 2. Upload file yang sudah dioptimalkan ke Supabase
+        // 2. Upload file WebP yang sudah dioptimalkan ke Supabase
         await window.SupabaseService.uploadPhoto(optimizedFile, {
           title: item.title,
           category: targetCategory,

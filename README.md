@@ -31,6 +31,7 @@ portfolioUploading_mbellmakeup/
 ├── index.html          # Markup terstruktur (Navbar, Drag-Drop Zone, Staging, Gallery, Modals)
 ├── style.css           # Styling modern & responsif (Luxury Rosewood & Gold MBell)
 ├── config.js           # Konfigurasi Supabase URL, Anon Key, Bucket, & Default Categories
+├── image-converter.js  # Generator konversi modular format gambar apa pun ke WebP (.webp)
 ├── supabase-service.js # Service layer operasi CRUD Database & Storage Supabase
 ├── app.js              # State management, drag-drop handling, batch upload, & modal controller
 ├── supabase_sync_setup.sql # Skrip SQL lengkap untuk Supabase SQL Editor (RLS, Index, & RPC Sync)
@@ -41,10 +42,10 @@ portfolioUploading_mbellmakeup/
 
 ## ⚡ Fitur Utama
 1. **Multi-File Drag & Drop Upload (High Performance & Anti-Timeout)**:
-   - **Kompresi Otomatis di Browser**: Foto mentah dari smartphone (5–15 MB) otomatis dikompres menjadi foto web tajam (~300 KB), menghemat kuota Supabase dan memastikan upload 12–20 foto selesai dalam hitungan detik di jaringan seluler 4G.
-   - **Batas Manusiawi**: Maksimal 20 foto per kategori untuk 1x proses upload dengan indikator & pesan ramah pengguna.
+   - **Batas Aman & Terukur**: Maksimal **20 foto** untuk 1x proses upload dan batas ukuran file maksimal **10MB per file** dengan validasi otomatis dan pop-up peringatan interaktif jika melebihi batas.
+   - **Generator Konversi Otomatis ke WebP (`image-converter.js`)**: Semua format gambar (JPG, PNG, WEBP, BMP, GIF, TIFF, HEIC, dll) otomatis dikonversi menjadi format `.webp` dengan resolusi cerdas (maks. 1920x1920px) dan kompresi tinggi (rata-rata 150–350 KB). Menghemat penyimpanan Supabase hingga 80-90% tanpa mengurangi detail riasan makeup.
    - **Auto-Retry & Wake Lock**: Otomatis mencoba ulang jika sinyal 4G terputus sesaat, dan mencegah layar HP tertidur (*sleep*) saat proses upload aktif.
-   - File tersimpan rapi di bucket: `images_mbell/{kategori}/{nama_file_acak}` dan tabel `public.images`.
+   - File tersimpan rapi di bucket: `images_mbell/{kategori}/{nama_file_acak}.webp` dan tabel `public.images`.
 
 2. **Select All, Bulk Delete & Pindah Kategori Massal**:
    - Checkbox di setiap kartu foto galeri untuk memilih foto satuan atau banyak foto sekaligus.
