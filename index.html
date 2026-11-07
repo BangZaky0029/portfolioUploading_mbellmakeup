@@ -82,6 +82,15 @@
           <p>atau klik untuk pilih file (PNG, JPG, WEBP)</p>
         </div>
 
+        <!-- Humane Upload Limit Tip -->
+        <div class="upload-tip-card">
+          <div class="upload-tip-icon">💡</div>
+          <div class="upload-tip-text">
+            <strong>Maksimal 20 foto per kategori</strong> untuk 1x proses upload.
+            <small>Foto otomatis dioptimasi agar proses cepat, tetap tajam & hemat kuota.</small>
+          </div>
+        </div>
+
         <!-- Staged Files Preview List -->
         <div id="stagingWrapper" style="display:none; margin-top:1rem;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
@@ -171,9 +180,21 @@
 
       <!-- Gallery Header -->
       <div class="gallery-header">
-        <div class="gallery-title">
-          <span id="currentCategoryTitle">Semua Koleksi</span>
-          <span style="font-size:0.85rem; font-weight:normal; color:var(--text-muted);" id="visiblePhotoCount">(0 foto)</span>
+        <div class="gallery-title-group">
+          <div class="gallery-title">
+            <span id="currentCategoryTitle">Semua Koleksi</span>
+            <span style="font-size:0.85rem; font-weight:normal; color:var(--text-muted);" id="visiblePhotoCount">(0 foto)</span>
+          </div>
+          <span class="selection-hint desktop-hint">💡 Klik 2x pada foto untuk memilih</span>
+          <span class="selection-hint mobile-hint">💡 Tekan lama foto untuk memilih</span>
+        </div>
+        <div class="gallery-controls">
+          <button type="button" class="btn btn-secondary btn-sm" id="btnToggleSelectMode" title="Pilih foto untuk dihapus bersamaan">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+            </svg>
+            <span id="btnToggleSelectModeText">Pilih Foto</span>
+          </button>
         </div>
       </div>
 
@@ -185,6 +206,85 @@
     </section>
 
   </main>
+
+  <!-- ==========================================================================
+       FLOATING BULK ACTION BAR (Tampil saat ada foto terpilih)
+       ========================================================================== -->
+  <div class="bulk-action-bar" id="bulkActionBar">
+    <div class="bulk-action-content">
+      <div class="bulk-action-info">
+        <span class="bulk-check-badge">✓</span>
+        <span><strong id="bulkSelectedCount">0</strong> foto dipilih</span>
+      </div>
+      <div class="bulk-action-btns">
+        <button type="button" class="btn btn-secondary btn-sm" id="btnBulkSelectAll">Pilih Semua</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btnBulkCancel">Batal</button>
+        <button type="button" class="btn btn-secondary btn-sm bulk-btn-icon-mobile" id="btnBulkOpenEditCategory" title="Ubah Kategori Foto Terpilih" aria-label="Ubah Kategori">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+          </svg>
+          <span class="bulk-btn-text">Ubah Kategori</span>
+        </button>
+        <button type="button" class="btn btn-danger btn-sm bulk-btn-icon-mobile" id="btnBulkDelete" title="Hapus Foto Terpilih" aria-label="Hapus Foto">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+          <span class="bulk-btn-text">Hapus (<span id="bulkDeleteCount">0</span>) Foto</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL: Ubah Kategori Banyak Foto (Bulk Edit Category)
+       ========================================================================== -->
+  <div class="modal-backdrop" id="bulkCategoryModal">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:0.65rem;">
+          <div class="dialog-icon-badge primary">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+            </svg>
+          </div>
+          <h3>Ubah Kategori Foto</h3>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal>
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
+          Pindahkan <strong id="bulkCatPhotoCount" style="color:var(--text-dark);">0</strong> foto yang dipilih ke kategori baru:
+        </p>
+
+        <!-- Preview mini thumbnails dari foto yang dipilih -->
+        <div class="bulk-thumb-preview-row" id="bulkCatThumbsPreview">
+          <!-- Diisi JS -->
+        </div>
+
+        <div class="form-group" style="margin-top:1rem; margin-bottom:1rem;">
+          <label class="form-label" for="bulkTargetCategorySelect">Pilih Kategori Tujuan:</label>
+          <select id="bulkTargetCategorySelect" class="form-select" style="font-weight:600;">
+            <!-- Diisi dinamis -->
+          </select>
+        </div>
+
+        <div style="margin-bottom:0.5rem;">
+          <label class="form-label" style="margin-bottom:0.4rem;">Atau Klik Langsung Pilihan Cepat:</label>
+          <div class="bulk-cat-chips-grid" id="bulkCatChipsGrid">
+            <!-- Chip kategori cepat diisi JS -->
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal>Batal</button>
+        <button type="button" class="btn btn-primary" id="btnSaveBulkCategory">Simpan & Pindahkan</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ==========================================================================
        MODAL: Edit Foto

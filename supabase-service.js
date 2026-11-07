@@ -24,9 +24,26 @@
       .toLowerCase()
       .replace(/[^a-z0-9_-]/g, '_')
       .replace(/_+/g, '_')
-      .slice(0, 40);
+      .slice(0, 35);
     const timestamp = Date.now().toString().slice(-6);
-    return `${cleanName}_${timestamp}${ext}`;
+    const randomSuffix = Math.random().toString(36).substring(2, 7);
+    return `${cleanName}_${timestamp}_${randomSuffix}${ext}`;
+  }
+
+  // Helper retry untuk mengatasi network jitter di jaringan seluler 4G/mobile
+  async function runWithRetry(fn, maxRetries = 2, delayMs = 1000) {
+    let lastError;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastError = err;
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, delayMs * (attempt + 1)));
+        }
+      }
+    }
+    throw lastError;
   }
 
   // Helper untuk mengekstrak path storage dari Public URL
@@ -211,17 +228,20 @@
       const sanitizedName = sanitizeFileName(file.name);
       const storagePath = `${category}/${sanitizedName}`;
 
-      // 1. Upload ke Supabase Storage
-      const { data: storageData, error: storageError } = await client.storage
-        .from(BUCKET_NAME)
-        .upload(storagePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
+      // 1. Upload ke Supabase Storage (dengan auto-retry jika ada gangguan sinyal 4G/mobile)
+      const storageData = await runWithRetry(async () => {
+        const { data, error } = await client.storage
+          .from(BUCKET_NAME)
+          .upload(storagePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
-      if (storageError) {
-        throw new Error(`Gagal upload ke Storage: ${storageError.message}`);
-      }
+        if (error) {
+          throw new Error(`Gagal upload ke Storage: ${error.message}`);
+        }
+        return data;
+      }, 2, 1200);
 
       // 2. Ambil Public URL
       const { data: urlData } = client.storage
@@ -264,13 +284,45 @@
 
     /**
      * Update detail foto (Title, Category, Description, Details)
+     * Jika kategori berubah, otomatis sinkronisasi file di Supabase Storage & perbarui imageUrl
      */
-    async updatePhoto(id, updates) {
+    async updatePhoto(id, updates, currentPhoto = null) {
       const payload = {};
       if (updates.title !== undefined) payload.title = updates.title;
-      if (updates.category !== undefined) payload.category = updates.category;
       if (updates.description !== undefined) payload.description = updates.description;
       if (updates.details !== undefined) payload.details = updates.details;
+
+      const cleanCategory = updates.category ? updates.category.trim() : null;
+      if (cleanCategory) {
+        payload.category = cleanCategory;
+      }
+
+      // Jika kategori berubah dan data foto lama tersedia, coba sinkronisasi Storage
+      if (currentPhoto && cleanCategory && currentPhoto.category && currentPhoto.category !== cleanCategory && currentPhoto.imageUrl) {
+        const oldStoragePath = extractStoragePath(currentPhoto.imageUrl);
+        if (oldStoragePath) {
+          const fileName = oldStoragePath.substring(oldStoragePath.lastIndexOf('/') + 1);
+          const newStoragePath = `${cleanCategory}/${fileName}`;
+          try {
+            const { error: moveErr } = await client.storage
+              .from(BUCKET_NAME)
+              .move(oldStoragePath, newStoragePath);
+
+            if (!moveErr) {
+              const { data: urlData } = client.storage
+                .from(BUCKET_NAME)
+                .getPublicUrl(newStoragePath);
+              if (urlData && urlData.publicUrl) {
+                payload.imageUrl = urlData.publicUrl;
+              }
+            } else {
+              console.warn('Gagal memindahkan file di storage (menggunakan URL lama):', moveErr.message);
+            }
+          } catch (storageErr) {
+            console.warn('Gagal memindahkan file di storage:', storageErr);
+          }
+        }
+      }
 
       const { data, error } = await client
         .from(TABLE_NAME)
@@ -281,6 +333,108 @@
 
       if (error) throw error;
       return data;
+    },
+
+    /**
+     * Ubah kategori banyak foto sekaligus (Bulk Category Update & Storage Sync)
+     * Sinkronisasi data center:
+     * 1. Coba panggil RPC PostgreSQL (jika skrip SQL sudah di-run di Supabase)
+     * 2. Atau pindahkan file fisik di Storage via API & update public.images (kategori + imageUrl)
+     * 3. Fallback: update kolom category di public.images jika storage move tidak diizinkan
+     * @param {Array<number|string|{id: number|string, imageUrl?: string, category?: string}>} photosOrIds
+     * @param {string} newCategory - Nama kategori tujuan baru
+     */
+    async updatePhotosCategoryBatch(photosOrIds, newCategory) {
+      const cleanCategory = (newCategory || '').trim();
+      if (!cleanCategory) throw new Error('Kategori tujuan tidak boleh kosong');
+
+      if (!photosOrIds || photosOrIds.length === 0) {
+        return { success: true, updatedCount: 0, category: cleanCategory };
+      }
+
+      // Normalisasi format input (bisa array of objects atau array of IDs)
+      const isObjectArray = typeof photosOrIds[0] === 'object' && photosOrIds[0] !== null;
+      const ids = photosOrIds.map(item => (typeof item === 'object' ? item.id : item))
+        .map(id => (isNaN(id) ? id : Number(id)))
+        .filter(Boolean);
+
+      if (ids.length === 0) return { success: true, updatedCount: 0, category: cleanCategory };
+
+      // METODE 1: Coba gunakan Stored Procedure / RPC PostgreSQL di Supabase (Tercepat & Atomik di Server)
+      try {
+        const { data: rpcData, error: rpcErr } = await client.rpc('move_photos_category', {
+          p_photo_ids: ids,
+          p_new_category: cleanCategory
+        });
+
+        if (!rpcErr && rpcData) {
+          console.log(`[SupabaseService] Berhasil memindahkan ${rpcData.length} foto via RPC Postgres.`);
+          return { success: true, updatedCount: rpcData.length, category: cleanCategory, method: 'rpc' };
+        }
+      } catch (rpcEx) {
+        // RPC belum dipasang di SQL Editor, lanjutkan ke METODE 2 (Client SDK)
+      }
+
+      // METODE 2: Client-side Storage Move + DB Update
+      let totalUpdated = 0;
+
+      if (isObjectArray) {
+        // Jika UI mengirim array objek foto lengkap
+        for (const photo of photosOrIds) {
+          try {
+            const oldStoragePath = extractStoragePath(photo.imageUrl);
+            let newImageUrl = null;
+
+            if (oldStoragePath && photo.category !== cleanCategory) {
+              const fileName = oldStoragePath.substring(oldStoragePath.lastIndexOf('/') + 1);
+              const newStoragePath = `${cleanCategory}/${fileName}`;
+
+              // Pindahkan file di storage bucket
+              const { error: moveErr } = await client.storage
+                .from(BUCKET_NAME)
+                .move(oldStoragePath, newStoragePath);
+
+              if (!moveErr) {
+                const { data: urlData } = client.storage
+                  .from(BUCKET_NAME)
+                  .getPublicUrl(newStoragePath);
+                newImageUrl = urlData.publicUrl;
+              } else {
+                console.warn(`[Storage Move Skipped ID: ${photo.id}]`, moveErr.message);
+              }
+            }
+
+            const updatePayload = { category: cleanCategory };
+            if (newImageUrl) updatePayload.imageUrl = newImageUrl;
+
+            const { error: updateErr } = await client
+              .from(TABLE_NAME)
+              .update(updatePayload)
+              .eq('id', photo.id);
+
+            if (!updateErr) totalUpdated++;
+          } catch (itemErr) {
+            console.error(`Gagal memindahkan foto ID ${photo.id}:`, itemErr);
+          }
+        }
+      } else {
+        // METODE 3 (Fallback jika hanya ID): Batch update kolom category
+        const chunkSize = 100;
+        for (let i = 0; i < ids.length; i += chunkSize) {
+          const chunkIds = ids.slice(i, i + chunkSize);
+          const { error } = await client
+            .from(TABLE_NAME)
+            .update({ category: cleanCategory })
+            .in('id', chunkIds);
+
+          if (error) {
+            throw new Error(`Gagal mengubah kategori foto: ${error.message}`);
+          }
+          totalUpdated += chunkIds.length;
+        }
+      }
+
+      return { success: true, updatedCount: totalUpdated, category: cleanCategory, method: 'client' };
     },
 
     /**
@@ -306,6 +460,51 @@
       if (dbError) throw dbError;
 
       return { success: true, id };
+    },
+
+    /**
+     * Hapus banyak foto sekaligus (Bulk Delete Atomik: Storage + DB)
+     * Menggunakan batch removal untuk performa maksimal (hanya 2 panggilan API)
+     * @param {Array<{id: number|string, imageUrl: string}>} photos
+     */
+    async deletePhotosBatch(photos) {
+      if (!photos || photos.length === 0) {
+        return { success: true, deletedCount: 0 };
+      }
+
+      const ids = photos.map(p => p.id).filter(Boolean);
+      const storagePaths = photos.map(p => extractStoragePath(p.imageUrl)).filter(Boolean);
+
+      // 1. Hapus file fisik secara batch dari Supabase Storage
+      if (storagePaths.length > 0) {
+        const chunkSize = 50;
+        for (let i = 0; i < storagePaths.length; i += chunkSize) {
+          const chunk = storagePaths.slice(i, i + chunkSize);
+          try {
+            await client.storage.from(BUCKET_NAME).remove(chunk);
+          } catch (storageErr) {
+            console.warn('Sebagian file di storage mungkin sudah tidak ada:', storageErr);
+          }
+        }
+      }
+
+      // 2. Hapus baris data secara batch dari Database public.images
+      if (ids.length > 0) {
+        const chunkSize = 100;
+        for (let i = 0; i < ids.length; i += chunkSize) {
+          const chunkIds = ids.slice(i, i + chunkSize);
+          const { error: dbError } = await client
+            .from(TABLE_NAME)
+            .delete()
+            .in('id', chunkIds);
+
+          if (dbError) {
+            throw new Error(`Gagal menghapus data dari Database: ${dbError.message}`);
+          }
+        }
+      }
+
+      return { success: true, deletedCount: ids.length };
     }
   };
 

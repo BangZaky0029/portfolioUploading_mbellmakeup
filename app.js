@@ -14,7 +14,9 @@ document.addEventListener('DOMContentLoaded', () => {
     photos: [],
     stagedFiles: [],
     searchQuery: '',
-    isUploading: false
+    isUploading: false,
+    selectedPhotoIds: new Set(),
+    isSelectionMode: false
   };
 
   // DOM Elements
@@ -47,6 +49,25 @@ document.addEventListener('DOMContentLoaded', () => {
     currentCategoryTitle: document.getElementById('currentCategoryTitle'),
     visiblePhotoCount: document.getElementById('visiblePhotoCount'),
     photoGrid: document.getElementById('photoGrid'),
+
+    // Selection & Bulk Actions
+    btnToggleSelectMode: document.getElementById('btnToggleSelectMode'),
+    btnToggleSelectModeText: document.getElementById('btnToggleSelectModeText'),
+    bulkActionBar: document.getElementById('bulkActionBar'),
+    bulkSelectedCount: document.getElementById('bulkSelectedCount'),
+    btnBulkSelectAll: document.getElementById('btnBulkSelectAll'),
+    btnBulkCancel: document.getElementById('btnBulkCancel'),
+    btnBulkOpenEditCategory: document.getElementById('btnBulkOpenEditCategory'),
+    btnBulkDelete: document.getElementById('btnBulkDelete'),
+    bulkDeleteCount: document.getElementById('bulkDeleteCount'),
+
+    // Bulk Category Edit Modal
+    bulkCategoryModal: document.getElementById('bulkCategoryModal'),
+    bulkCatPhotoCount: document.getElementById('bulkCatPhotoCount'),
+    bulkCatThumbsPreview: document.getElementById('bulkCatThumbsPreview'),
+    bulkTargetCategorySelect: document.getElementById('bulkTargetCategorySelect'),
+    bulkCatChipsGrid: document.getElementById('bulkCatChipsGrid'),
+    btnSaveBulkCategory: document.getElementById('btnSaveBulkCategory'),
 
     // Edit Modal
     editModal: document.getElementById('editModal'),
@@ -235,9 +256,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================================
-  // Toast Notifications
+  // Toast Notifications (Dibatasi maksimal 3 agar tidak memenuhi layar mobile)
   // ==========================================================================
   function showToast(message, type = 'info') {
+    while (elements.toastContainer.children.length >= 3) {
+      elements.toastContainer.firstElementChild.remove();
+    }
+
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
 
@@ -262,6 +287,89 @@ document.addEventListener('DOMContentLoaded', () => {
       toast.style.transform = 'translateY(10px)';
       setTimeout(() => toast.remove(), 250);
     }, 3500);
+  }
+
+  // ==========================================================================
+  // Client-side Image Compression Engine
+  // Mengubah foto mentah kamera HP (4-15MB) menjadi foto tajam optimal (250-500KB)
+  // Menjamin upload 12-20 foto selesai dalam beberapa detik di 4G tanpa timeout
+  // ==========================================================================
+  async function compressImage(file, { maxWidth = 1920, maxHeight = 1920, quality = 0.82 } = {}) {
+    if (!file || !file.type.startsWith('image/') || file.type === 'image/svg+xml') {
+      return file;
+    }
+
+    // Jika file sudah kecil (< 400KB), tidak perlu dikompres lagi
+    if (file.size <= 400 * 1024) {
+      return file;
+    }
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxWidth || height > maxHeight) {
+            if (width / height > maxWidth / maxHeight) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Format JPEG untuk kompatibilitas maksimal di semua browser smartphone
+          const outputType = 'image/jpeg';
+          canvas.toBlob((blob) => {
+            if (!blob || blob.size >= file.size) {
+              resolve(file);
+            } else {
+              const newName = file.name.replace(/\.[^/.]+$/, '.jpg');
+              const compressedFile = new File([blob], newName, {
+                type: outputType,
+                lastModified: Date.now()
+              });
+              resolve(compressedFile);
+            }
+          }, outputType, quality);
+        };
+        img.onerror = () => resolve(file);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Screen Wake Lock API (Mencegah layar HP mati/sleep selama proses upload)
+  let activeWakeLock = null;
+  async function requestWakeLock() {
+    try {
+      if ('wakeLock' in navigator) {
+        activeWakeLock = await navigator.wakeLock.request('screen');
+      }
+    } catch (err) {
+      console.log('Screen Wake Lock skipped:', err);
+    }
+  }
+
+  function releaseWakeLock() {
+    try {
+      if (activeWakeLock) {
+        activeWakeLock.release();
+        activeWakeLock = null;
+      }
+    } catch (err) {
+      console.log('Screen Wake Lock release skipped:', err);
+    }
   }
 
   // ==========================================================================
@@ -337,6 +445,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     elements.uploadCategorySelect.innerHTML = optionsHtml;
     elements.editPhotoCategory.innerHTML = optionsHtml;
+    if (elements.bulkTargetCategorySelect) {
+      elements.bulkTargetCategorySelect.innerHTML = optionsHtml;
+    }
 
     // Set default selection
     if (state.activeCategory !== 'all') {
@@ -379,6 +490,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setActiveCategory(cat) {
     state.activeCategory = cat;
+    state.selectedPhotoIds.clear();
+    state.isSelectionMode = false;
+    updateBulkActionBar();
     
     // Update tab visual
     elements.categoryTabsContainer.querySelectorAll('.category-pill').forEach(p => {
@@ -445,9 +559,17 @@ document.addEventListener('DOMContentLoaded', () => {
       const category = photo.category || 'uncategorized';
       const desc = photo.description || '-';
       const imgUrl = photo.imageUrl || '';
+      const isSelected = state.selectedPhotoIds.has(photo.id);
 
       return `
-        <div class="photo-card" data-id="${photo.id}">
+        <div class="photo-card ${isSelected ? 'selected' : ''}" data-id="${photo.id}">
+          <div class="photo-select-wrapper">
+            <div class="photo-checkbox" data-id="${photo.id}" title="${isSelected ? 'Batalkan pilihan' : 'Pilih foto ini'}">
+              <svg width="14" height="14" fill="none" stroke="${isSelected ? '#FFF' : 'transparent'}" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+          </div>
           <div class="photo-media-wrapper">
             <img class="photo-img" src="${imgUrl}" alt="${title}" loading="lazy" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\' viewBox=\'0 0 100 100\'><rect width=\'100\' height=\'100\' fill=\'%23F0EAE6\'/><text x=\'50\' y=\'50\' fill=\'%23999\' font-size=\'12\' text-anchor=\'middle\' dominant-baseline=\'middle\'>Foto Rusak</text></svg>'">
             <span class="photo-badge">${category}</span>
@@ -483,16 +605,131 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Attach card action listeners
     attachCardEvents();
+    updateBulkActionBar();
   }
 
   function attachCardEvents() {
-    // Zoom / Lightbox
-    elements.photoGrid.querySelectorAll('.zoom-btn, .photo-img').forEach(el => {
-      el.addEventListener('click', (e) => {
-        const card = e.target.closest('.photo-card');
+    elements.photoGrid.querySelectorAll('.photo-card').forEach(card => {
+      const photoId = card.dataset.id;
+      let touchTimer = null;
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let isLongPressTriggered = false;
+
+      // 1. MOBILE TOUCH: Tekan Lama (~450ms) pada salah satu card image untuk mengaktifkan Checklist Mode
+      card.addEventListener('touchstart', (e) => {
+        // Jangan picu jika menyentuh tombol aksi (zoom, edit, delete)
+        if (e.target.closest('.photo-action-btn')) return;
+
+        isLongPressTriggered = false;
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+
+        touchTimer = setTimeout(() => {
+          isLongPressTriggered = true;
+          if (navigator.vibrate) {
+            try { navigator.vibrate(50); } catch (_) {}
+          }
+          if (!state.isSelectionMode) {
+            enterSelectionMode(photoId);
+            showToast('Mode checklist aktif. Tekan 1x untuk memilih foto lainnya.', 'info');
+          } else {
+            togglePhotoSelection(photoId);
+          }
+        }, 450);
+      }, { passive: true });
+
+      card.addEventListener('touchmove', (e) => {
+        if (!touchTimer) return;
+        const touch = e.touches[0];
+        // Jika jari bergeser > 10px (user sedang scroll layar), batalkan long-press
+        if (Math.hypot(touch.clientX - touchStartX, touch.clientY - touchStartY) > 10) {
+          clearTimeout(touchTimer);
+          touchTimer = null;
+        }
+      }, { passive: true });
+
+      card.addEventListener('touchend', () => {
+        if (touchTimer) {
+          clearTimeout(touchTimer);
+          touchTimer = null;
+        }
+      });
+
+      card.addEventListener('touchcancel', () => {
+        if (touchTimer) {
+          clearTimeout(touchTimer);
+          touchTimer = null;
+        }
+      });
+
+      // Mencegah menu pop-up browser bawaan HP ("Simpan gambar") saat menekan lama
+      card.addEventListener('contextmenu', (e) => {
+        if (isLongPressTriggered || state.isSelectionMode) {
+          e.preventDefault();
+        }
+      });
+
+      // 2. DESKTOP WEB: Double-Click (Klik 2x) pada salah satu card image untuk mengaktifkan Checklist Mode
+      card.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!state.isSelectionMode) {
+          enterSelectionMode(photoId);
+          showToast('Mode checklist aktif. Klik 1x untuk memilih foto lainnya.', 'info');
+        } else {
+          togglePhotoSelection(photoId);
+        }
+      });
+
+      // 3. SINGLE CLICK / TAP HANDLER
+      card.addEventListener('click', (e) => {
+        // Jika baru saja terpicu long press di mobile, abaikan event click lanjutannya
+        if (isLongPressTriggered) {
+          isLongPressTriggered = false;
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+
+        // Jika mengklik tombol aksi spesifik (zoom, edit, delete), biarkan listener tombol berjalan
+        if (e.target.closest('.photo-action-btn')) {
+          return;
+        }
+
+        // JIKA SEDANG DALAM MODE CHECKLIST: Cukup 1x klik/tap di manapun pada kartu untuk checklist
+        if (state.isSelectionMode) {
+          e.preventDefault();
+          e.stopPropagation();
+          togglePhotoSelection(photoId);
+          return;
+        }
+
+        // JIKA MODE NORMAL: Klik gambar untuk perbesar (Lightbox Zoom)
+        if (e.target.closest('.photo-img') || e.target.closest('.photo-media-wrapper')) {
+          const photo = state.photos.find(p => p.id == photoId);
+          if (photo) openLightbox(photo);
+        }
+      });
+
+      // Checkbox Click Listener
+      const cb = card.querySelector('.photo-checkbox');
+      if (cb) {
+        cb.addEventListener('click', (e) => {
+          e.stopPropagation();
+          togglePhotoSelection(photoId);
+        });
+      }
+    });
+
+    // Zoom / Lightbox Action Button
+    elements.photoGrid.querySelectorAll('.zoom-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const card = btn.closest('.photo-card');
         if (!card) return;
-        const photoId = card.dataset.id;
-        const photo = state.photos.find(p => p.id == photoId);
+        const photo = state.photos.find(p => p.id == card.dataset.id);
         if (photo) openLightbox(photo);
       });
     });
@@ -535,6 +772,9 @@ document.addEventListener('DOMContentLoaded', () => {
           await window.SupabaseService.deletePhoto(photo.id, photo.imageUrl);
           showToast(`Foto "${photo.title}" berhasil dihapus`, 'success');
           
+          state.selectedPhotoIds.delete(photo.id);
+          updateBulkActionBar();
+
           // Refresh list & counters
           await loadCategories();
           await loadGallery();
@@ -544,6 +784,290 @@ document.addEventListener('DOMContentLoaded', () => {
           btn.disabled = false;
         }
       });
+    });
+  }
+
+  // ==========================================================================
+  // Selection & Bulk Delete Operations
+  // ==========================================================================
+  function enterSelectionMode(initialPhotoId = null) {
+    state.isSelectionMode = true;
+    elements.photoGrid.classList.add('selection-mode-active');
+    document.body.classList.add('selection-mode-active');
+    if (elements.btnToggleSelectModeText) {
+      elements.btnToggleSelectModeText.textContent = '✕ Selesai';
+    }
+
+    if (initialPhotoId) {
+      const id = isNaN(initialPhotoId) ? initialPhotoId : Number(initialPhotoId);
+      state.selectedPhotoIds.add(id);
+      const card = elements.photoGrid.querySelector(`.photo-card[data-id="${id}"]`);
+      if (card) {
+        card.classList.add('selected');
+        const icon = card.querySelector('.photo-checkbox svg');
+        if (icon) icon.setAttribute('stroke', '#FFF');
+      }
+    }
+
+    updateBulkActionBar();
+  }
+
+  function exitSelectionMode() {
+    state.isSelectionMode = false;
+    state.selectedPhotoIds.clear();
+    elements.photoGrid.classList.remove('selection-mode-active');
+    document.body.classList.remove('selection-mode-active');
+    if (elements.btnToggleSelectModeText) {
+      elements.btnToggleSelectModeText.textContent = 'Pilih Foto';
+    }
+
+    elements.photoGrid.querySelectorAll('.photo-card').forEach(card => {
+      card.classList.remove('selected');
+      const icon = card.querySelector('.photo-checkbox svg');
+      if (icon) icon.setAttribute('stroke', 'transparent');
+    });
+
+    updateBulkActionBar();
+  }
+
+  function togglePhotoSelection(photoId) {
+    const id = isNaN(photoId) ? photoId : Number(photoId);
+    if (state.selectedPhotoIds.has(id)) {
+      state.selectedPhotoIds.delete(id);
+    } else {
+      state.selectedPhotoIds.add(id);
+    }
+
+    const card = elements.photoGrid.querySelector(`.photo-card[data-id="${id}"]`);
+    if (card) {
+      const isSelected = state.selectedPhotoIds.has(id);
+      card.classList.toggle('selected', isSelected);
+      const icon = card.querySelector('.photo-checkbox svg');
+      if (icon) {
+        icon.setAttribute('stroke', isSelected ? '#FFF' : 'transparent');
+      }
+    }
+
+    updateBulkActionBar();
+  }
+
+  function selectAllPhotos(selectAll = true) {
+    if (selectAll) {
+      state.photos.forEach(p => state.selectedPhotoIds.add(p.id));
+    } else {
+      state.selectedPhotoIds.clear();
+    }
+
+    elements.photoGrid.querySelectorAll('.photo-card').forEach(card => {
+      const id = isNaN(card.dataset.id) ? card.dataset.id : Number(card.dataset.id);
+      const isSelected = state.selectedPhotoIds.has(id);
+      card.classList.toggle('selected', isSelected);
+      const icon = card.querySelector('.photo-checkbox svg');
+      if (icon) {
+        icon.setAttribute('stroke', isSelected ? '#FFF' : 'transparent');
+      }
+    });
+
+    updateBulkActionBar();
+  }
+
+  function updateBulkActionBar() {
+    const count = state.selectedPhotoIds.size;
+    if (elements.bulkSelectedCount) elements.bulkSelectedCount.textContent = count;
+    if (elements.bulkDeleteCount) elements.bulkDeleteCount.textContent = count;
+
+    if (count > 0) {
+      if (elements.bulkActionBar) elements.bulkActionBar.classList.add('active');
+    } else {
+      if (elements.bulkActionBar) elements.bulkActionBar.classList.remove('active');
+    }
+  }
+
+  async function handleBulkDelete() {
+    const count = state.selectedPhotoIds.size;
+    if (count === 0) return;
+
+    const photosToDelete = state.photos.filter(p => state.selectedPhotoIds.has(p.id));
+    if (photosToDelete.length === 0) return;
+
+    const confirmed = await customConfirm({
+      title: 'Hapus Banyak Foto Portofolio',
+      message: `Apakah Anda yakin ingin menghapus ${count} foto yang dipilih sekaligus?`,
+      warning: 'PERINGATAN: Semua file fisik di Supabase Storage dan data di database akan dihapus permanen.',
+      confirmText: `Ya, Hapus ${count} Foto`,
+      isDanger: true
+    });
+
+    if (!confirmed) return;
+
+    try {
+      elements.btnBulkDelete.disabled = true;
+      elements.btnBulkDelete.innerHTML = `
+        <svg class="spin-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" stroke-opacity="0.3"></circle>
+          <path d="M12 3a9 9 0 0 1 9 9" stroke-linecap="round"></path>
+        </svg>
+        <span class="bulk-btn-text">Menghapus...</span>
+      `;
+
+      const res = await window.SupabaseService.deletePhotosBatch(photosToDelete);
+      showToast(`Sukses menghapus ${res.deletedCount} foto portofolio!`, 'success');
+
+      exitSelectionMode();
+
+      await loadCategories();
+      await loadGallery();
+    } catch (err) {
+      console.error('Gagal hapus banyak foto:', err);
+      showToast(`Gagal menghapus foto: ${err.message}`, 'error');
+    } finally {
+      elements.btnBulkDelete.disabled = false;
+      elements.btnBulkDelete.innerHTML = `
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+        <span class="bulk-btn-text">Hapus (<span id="bulkDeleteCount">${state.selectedPhotoIds.size}</span>) Foto</span>
+      `;
+    }
+  }
+
+  // Event Listeners Seleksi
+  if (elements.btnToggleSelectMode) {
+    elements.btnToggleSelectMode.addEventListener('click', () => {
+      if (state.isSelectionMode) {
+        exitSelectionMode();
+      } else {
+        enterSelectionMode();
+      }
+    });
+  }
+
+  if (elements.btnBulkSelectAll) {
+    elements.btnBulkSelectAll.addEventListener('click', () => selectAllPhotos(true));
+  }
+  if (elements.btnBulkCancel) {
+    elements.btnBulkCancel.addEventListener('click', () => {
+      exitSelectionMode();
+    });
+  }
+  if (elements.btnBulkDelete) {
+    elements.btnBulkDelete.addEventListener('click', handleBulkDelete);
+  }
+
+  // ==========================================================================
+  // Bulk Category Edit Handlers (Pindah / Ubah Kategori Foto Terpilih)
+  // ==========================================================================
+  function openBulkCategoryModal() {
+    const count = state.selectedPhotoIds.size;
+    if (count === 0) return;
+
+    const selectedPhotos = state.photos.filter(p => state.selectedPhotoIds.has(p.id));
+    if (selectedPhotos.length === 0) return;
+
+    elements.bulkCatPhotoCount.textContent = count;
+
+    // Render preview thumbnails foto-foto terpilih
+    const maxThumbnails = 8;
+    const shownPhotos = selectedPhotos.slice(0, maxThumbnails);
+    let thumbsHtml = shownPhotos.map(p => `
+      <img class="bulk-thumb-mini" src="${p.imageUrl}" alt="${p.title}" title="${p.title}">
+    `).join('');
+
+    if (count > maxThumbnails) {
+      thumbsHtml += `<div class="bulk-thumb-more">+${count - maxThumbnails}</div>`;
+    }
+    elements.bulkCatThumbsPreview.innerHTML = thumbsHtml;
+
+    // Populate dropdown pilihan kategori
+    const optionsHtml = state.categories.map(c => `
+      <option value="${c.name}">${c.name}</option>
+    `).join('');
+    elements.bulkTargetCategorySelect.innerHTML = optionsHtml;
+
+    // Tentukan kategori default awal
+    const initialCat = (state.activeCategory !== 'all') 
+      ? state.activeCategory 
+      : (state.categories[0] ? state.categories[0].name : '');
+    elements.bulkTargetCategorySelect.value = initialCat;
+
+    // Render chips pilihan cepat
+    renderBulkCategoryChips(initialCat);
+
+    elements.bulkCategoryModal.classList.add('active');
+  }
+
+  function renderBulkCategoryChips(activeCatName) {
+    elements.bulkCatChipsGrid.innerHTML = state.categories.map(cat => {
+      const isSel = cat.name === activeCatName ? 'selected' : '';
+      return `
+        <div class="bulk-cat-chip ${isSel}" data-cat="${cat.name}">
+          ${cat.name}
+        </div>
+      `;
+    }).join('');
+
+    // Listener klik chip kategori cepat
+    elements.bulkCatChipsGrid.querySelectorAll('.bulk-cat-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const catName = chip.dataset.cat;
+        elements.bulkTargetCategorySelect.value = catName;
+        elements.bulkCatChipsGrid.querySelectorAll('.bulk-cat-chip').forEach(c => {
+          c.classList.toggle('selected', c.dataset.cat === catName);
+        });
+      });
+    });
+  }
+
+  if (elements.bulkTargetCategorySelect) {
+    elements.bulkTargetCategorySelect.addEventListener('change', (e) => {
+      const selectedCat = e.target.value;
+      elements.bulkCatChipsGrid.querySelectorAll('.bulk-cat-chip').forEach(c => {
+        c.classList.toggle('selected', c.dataset.cat === selectedCat);
+      });
+    });
+  }
+
+  if (elements.btnBulkOpenEditCategory) {
+    elements.btnBulkOpenEditCategory.addEventListener('click', () => {
+      openBulkCategoryModal();
+    });
+  }
+
+  if (elements.btnSaveBulkCategory) {
+    elements.btnSaveBulkCategory.addEventListener('click', async () => {
+      const targetCategory = elements.bulkTargetCategorySelect.value;
+      if (!targetCategory) {
+        showToast('Pilih kategori tujuan terlebih dahulu', 'error');
+        return;
+      }
+
+      const count = state.selectedPhotoIds.size;
+      const photoIds = Array.from(state.selectedPhotoIds);
+      const selectedPhotos = state.photos.filter(p => state.selectedPhotoIds.has(p.id));
+
+      try {
+        elements.btnSaveBulkCategory.disabled = true;
+        elements.btnSaveBulkCategory.textContent = 'Memindahkan...';
+
+        const res = await window.SupabaseService.updatePhotosCategoryBatch(
+          selectedPhotos.length > 0 ? selectedPhotos : photoIds,
+          targetCategory
+        );
+        showToast(`Berhasil memindahkan ${res.updatedCount} foto ke kategori "${targetCategory}"!`, 'success');
+
+        elements.bulkCategoryModal.classList.remove('active');
+        exitSelectionMode();
+
+        await loadCategories();
+        // Langsung arahkan tab kategori ke kategori tujuan agar admin melihat foto yang dipindahkan
+        setActiveCategory(targetCategory);
+      } catch (err) {
+        console.error('Gagal memindahkan kategori:', err);
+        showToast(`Gagal memindahkan kategori: ${err.message}`, 'error');
+      } finally {
+        elements.btnSaveBulkCategory.disabled = false;
+        elements.btnSaveBulkCategory.textContent = 'Simpan & Pindahkan';
+      }
     });
   }
 
@@ -580,6 +1104,8 @@ document.addEventListener('DOMContentLoaded', () => {
     handleSelectedFiles(files);
   });
 
+  const MAX_BATCH_UPLOAD = 20;
+
   function handleSelectedFiles(fileList) {
     if (!fileList || fileList.length === 0) return;
 
@@ -593,7 +1119,25 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    validFiles.forEach(file => {
+    const currentCount = state.stagedFiles.length;
+    let allowedFiles = validFiles;
+
+    if (currentCount + validFiles.length > MAX_BATCH_UPLOAD) {
+      const remainingQuota = Math.max(0, MAX_BATCH_UPLOAD - currentCount);
+      if (remainingQuota === 0) {
+        customAlert({
+          title: 'Batas Antrean Tercapai',
+          message: `Maksimal 20 foto per kategori untuk 1x proses upload agar proses cepat dan foto otomatis dioptimasi tanpa lemot. Silakan unggah antrean foto ini terlebih dahulu.`,
+          type: 'warning'
+        });
+        return;
+      }
+
+      allowedFiles = validFiles.slice(0, remainingQuota);
+      showToast(`Maksimal 20 foto untuk 1x upload. ${remainingQuota} foto pertama dimasukkan ke antrean.`, 'info');
+    }
+
+    allowedFiles.forEach(file => {
       const id = 'stage_' + Math.random().toString(36).substring(2, 9);
       const previewUrl = URL.createObjectURL(file);
       const cleanTitle = file.name.substring(0, file.name.lastIndexOf('.'))
@@ -668,7 +1212,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ==========================================================================
-  // Process Batch Upload to Supabase
+  // Process Batch Upload to Supabase (Dengan Kompresi & Wake Lock)
   // ==========================================================================
   elements.btnUploadSubmit.addEventListener('click', async () => {
     if (state.stagedFiles.length === 0 || state.isUploading) return;
@@ -687,6 +1231,9 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.btnUploadSubmit.disabled = true;
     elements.uploadProgressBox.style.display = 'block';
 
+    // Aktifkan Wake Lock agar layar HP tidak meredup/sleep selama upload
+    await requestWakeLock();
+
     const total = state.stagedFiles.length;
     let completed = 0;
     let errorCount = 0;
@@ -696,10 +1243,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const percent = Math.round(((i) / total) * 100);
       elements.uploadProgressBar.style.width = `${percent}%`;
       elements.uploadProgressPercent.textContent = `${percent}%`;
-      elements.uploadProgressText.textContent = `Mengunggah (${i + 1}/${total}): ${item.file.name}...`;
+      elements.uploadProgressText.textContent = `Mengoptimasi & mengunggah (${i + 1}/${total}): ${item.file.name}...`;
 
       try {
-        await window.SupabaseService.uploadPhoto(item.file, {
+        // 1. Kompres foto secara otomatis di browser (dari 5-15MB menjadi ~300KB)
+        const optimizedFile = await compressImage(item.file);
+
+        // 2. Upload file yang sudah dioptimalkan ke Supabase
+        await window.SupabaseService.uploadPhoto(optimizedFile, {
           title: item.title,
           category: targetCategory,
           description: `Portfolio ${targetCategory}`
@@ -708,13 +1259,22 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         console.error(`Gagal upload ${item.file.name}:`, err);
         errorCount++;
-        showToast(`Gagal: ${item.file.name} (${err.message})`, 'error');
+        if (errorCount <= 2 || total <= 3) {
+          showToast(`Gagal: ${item.file.name} (${err.message})`, 'error');
+        }
       }
     }
+
+    // Lepaskan Wake Lock setelah selesai
+    releaseWakeLock();
 
     elements.uploadProgressBar.style.width = '100%';
     elements.uploadProgressPercent.textContent = '100%';
     elements.uploadProgressText.textContent = `Selesai! ${completed} berhasil, ${errorCount} gagal.`;
+
+    if (errorCount > 2) {
+      showToast(`Sebagian upload gagal (${errorCount} foto). Periksa koneksi internet Anda dan coba lagi.`, 'error');
+    }
 
     if (completed > 0) {
       showToast(`Sukses mengunggah ${completed} foto ke kategori "${targetCategory}"!`, 'success');
@@ -772,12 +1332,14 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.btnSaveEditPhoto.disabled = true;
       elements.btnSaveEditPhoto.textContent = 'Menyimpan...';
 
+      const currentPhoto = state.photos.find(p => String(p.id) === String(id));
+
       await window.SupabaseService.updatePhoto(id, {
         title,
         category,
         description,
         details
-      });
+      }, currentPhoto);
 
       showToast('Detail foto berhasil diperbarui!', 'success');
       elements.editModal.classList.remove('active');

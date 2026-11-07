@@ -33,34 +33,41 @@ portfolioUploading_mbellmakeup/
 ├── config.js           # Konfigurasi Supabase URL, Anon Key, Bucket, & Default Categories
 ├── supabase-service.js # Service layer operasi CRUD Database & Storage Supabase
 ├── app.js              # State management, drag-drop handling, batch upload, & modal controller
+├── supabase_sync_setup.sql # Skrip SQL lengkap untuk Supabase SQL Editor (RLS, Index, & RPC Sync)
 └── README.md           # Dokumentasi teknis & panduan SQL
 ```
 
 ---
 
 ## ⚡ Fitur Utama
-1. **Multi-File Drag & Drop Upload**:
-   - Tarik beberapa foto sekaligus ke area uploader.
-   - Preview thumbnail, ukuran file, dan ubah judul sebelum upload.
-   - Progress bar real-time saat upload berlangsung.
-   - File otomatis tersimpan rapi di folder storage: `images_mbell/{kategori}/{nama_file}`.
-   - Record otomatis di-insert ke tabel `public.images` (`id`, `title`, `category`, `imageUrl`, `description`, `details`).
+1. **Multi-File Drag & Drop Upload (High Performance & Anti-Timeout)**:
+   - **Kompresi Otomatis di Browser**: Foto mentah dari smartphone (5–15 MB) otomatis dikompres menjadi foto web tajam (~300 KB), menghemat kuota Supabase dan memastikan upload 12–20 foto selesai dalam hitungan detik di jaringan seluler 4G.
+   - **Batas Manusiawi**: Maksimal 20 foto per kategori untuk 1x proses upload dengan indikator & pesan ramah pengguna.
+   - **Auto-Retry & Wake Lock**: Otomatis mencoba ulang jika sinyal 4G terputus sesaat, dan mencegah layar HP tertidur (*sleep*) saat proses upload aktif.
+   - File tersimpan rapi di bucket: `images_mbell/{kategori}/{nama_file_acak}` dan tabel `public.images`.
 
-2. **Manajemen Kategori Fleksibel (CRUD)**:
+2. **Select All, Bulk Delete & Pindah Kategori Massal**:
+   - Checkbox di setiap kartu foto galeri untuk memilih foto satuan atau banyak foto sekaligus.
+   - **Gesture Modern**: Double-click di Desktop, atau Tekan Lama (~450ms) di HP untuk mulai memilih.
+   - **Floating Bottom Action Bar**: Menampilkan jumlah foto terpilih (`✓ X foto dipilih`), tombol `Pilih Semua`, `Batal`, `Ubah Kategori`, dan `Hapus Foto`.
+   - **Pindah Kategori Massal (Bulk Category Move)**: Mengubah kategori banyak foto yang dipilih sekaligus (misal 3 foto dari `akad` dipindah ke `pesta`) dengan preview foto terpilih, dropdown kategori, dan pilihan chip kategori instan.
+   - Eksekusi atomik berkecepatan tinggi: Menghapus atau mengupdate baris di Database secara batch dalam 1x panggilan query.
+
+3. **Manajemen Kategori Fleksibel (CRUD)**:
    - Tambah kategori baru secara instan (`+ Kategori Baru`).
    - Ubah nama kategori (otomatis meng-update semua foto terkait di tabel database).
    - Hapus kategori (dengan opsi konfirmasi aman).
    - Tab filter kategori dengan indikator badge jumlah foto yang bisa di-scroll horizontal.
 
-3. **Manajemen Foto & Galeri**:
+4. **Manajemen Foto & Galeri**:
    - Filter cepat berdasarkan kategori aktif atau pencarian keyword (judul / deskripsi).
    - Edit detail foto (ubah judul, pindah kategori, deskripsi, details).
    - Lightbox zoom untuk melihat foto resolusi penuh.
-   - Hapus foto **Atomik**: Menghapus baris data di tabel `images` **sekaligus** menghapus file fisik di Supabase Storage `images_mbell`.
+   - Hapus foto satuan maupun massal dengan konfirmasi pop-up kustom yang aman.
 
-4. **Desain Elegan & Responsif**:
+5. **Desain Elegan & Responsif**:
    - Tema selaras dengan brand MBell MakeUp (Rosewood `#9E5A54`, Gold `#D4AF37`, Soft Cream `#FAF7F5`).
-   - Tampilan optimal pada layar Desktop, Tablet, maupun Smartphone (Mobile).
+   - Tampilan optimal pada layar Desktop, Tablet, maupun Smartphone (Mobile Touchscreen-ready).
 
 ---
 
