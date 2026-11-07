@@ -28,6 +28,23 @@
           <p>Portfolio Media & Category Manager</p>
         </div>
       </div>
+
+      <!-- Mode Switcher Tabs (Galeri Portofolio vs Katalog & Brosur vs Hero & Profil) -->
+      <div class="mode-switcher-container" id="modeSwitcherContainer">
+        <button type="button" class="mode-tab active" id="tabModePortfolio" data-mode="portfolio">
+          <span class="mode-icon">🖼️</span>
+          <span class="mode-label"><span class="desktop-only">Galeri </span>Portofolio</span>
+        </button>
+        <button type="button" class="mode-tab" id="tabModeCatalogue" data-mode="catalogue">
+          <span class="mode-icon">📑</span>
+          <span class="mode-label">Katalog<span class="desktop-only"> & Brosur</span></span>
+        </button>
+        <button type="button" class="mode-tab" id="tabModeHero" data-mode="hero">
+          <span class="mode-icon">✨</span>
+          <span class="mode-label">Hero<span class="desktop-only"> & Profil</span></span>
+        </button>
+      </div>
+
       <div class="header-stats">
         <div class="stat-pill">
           <span class="indicator-dot" id="statusDot"></span>
@@ -48,8 +65,12 @@
   <!-- Main Content Layout -->
   <main class="main-wrapper">
 
-    <!-- Left Column: Upload & Categories -->
-    <aside class="sidebar-panel">
+    <!-- ======================================================================
+         VIEW 1: MODE GALERI PORTOFOLIO (Default / public.images)
+         ====================================================================== -->
+    <div id="portfolioView" class="view-container">
+      <!-- Left Column: Upload & Categories -->
+      <aside class="sidebar-panel">
 
       <!-- Card: Upload Foto Baru -->
       <div class="card">
@@ -221,6 +242,172 @@
       </div>
 
     </section>
+  </div>
+
+    <!-- ======================================================================
+         VIEW 2: MODE KATALOG & BROSUR PRICELIST (public.catalogue)
+         ====================================================================== -->
+    <div id="catalogueView" class="view-container hidden-view" style="display:none;">
+      <!-- Left Column: Upload Brosur Baru -->
+      <aside class="sidebar-panel">
+        <div class="card">
+          <div class="card-title">
+            <span>Upload Brosur Katalog</span>
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+
+          <!-- Dropzone Brosur -->
+          <div class="dropzone" id="catDropzone" style="padding:1.5rem 1rem;">
+            <input type="file" id="catFileInput" class="file-input" accept="image/*">
+            <div class="dropzone-icon">
+              <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+            </div>
+            <h3 style="font-size:0.95rem;">Pilih File Brosur / Dokumen</h3>
+            <p style="font-size:0.75rem;">PNG, WebP, JPG (Maks. 30MB)</p>
+          </div>
+
+          <!-- Staged Single File Preview Box -->
+          <div id="catStagingBox" class="catalogue-staging-box" style="display:none;">
+            <img id="catStagingImg" src="" alt="Preview" class="catalogue-staging-img">
+            <div class="catalogue-staging-meta">
+              <div id="catStagingName" class="catalogue-staging-name"></div>
+              <div id="catStagingSize" class="catalogue-staging-size"></div>
+            </div>
+            <button type="button" class="btn btn-sm btn-secondary" id="btnCatClearFile"
+              style="padding:2px 8px; font-size:0.72rem; color:var(--danger);">Batal</button>
+          </div>
+
+          <!-- Form Fields -->
+          <div style="margin-top:1rem;">
+            <!-- Judul Paket & Sub-Judul -->
+            <div class="form-group">
+              <label class="form-label" for="catInputLabel">Judul Brosur / Paket *</label>
+              <input type="text" id="catInputLabel" class="form-input" placeholder="Contoh: Katalog Paket 1" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="catInputShortTitle">Kategori Singkat / Sub-Judul *</label>
+              <input type="text" id="catInputShortTitle" class="form-input" placeholder="Contoh: Wedding & Akad" required>
+            </div>
+
+            <!-- Tag / Badge & Urutan -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
+              <div class="form-group">
+                <label class="form-label" for="catSelectBadge">Tag / Badge</label>
+                <select id="catSelectBadge" class="form-select">
+                  <option value="Popular">Popular</option>
+                  <option value="Favorite">Favorite</option>
+                  <option value="Lengkap">Lengkap</option>
+                  <option value="Penting">Penting</option>
+                  <option value="Promo">Promo</option>
+                  <option value="Baru">Baru</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="catInputOrder">Urutan Tampil (#)</label>
+                <input type="number" id="catInputOrder" class="form-input" min="1" max="99" value="1">
+              </div>
+            </div>
+
+            <!-- Deskripsi -->
+            <div class="form-group">
+              <label class="form-label" for="catInputDesc">Deskripsi Ringkas Layanan</label>
+              <textarea id="catInputDesc" class="form-textarea" rows="2" placeholder="Rincian singkat paket, prosesi, pendamping keluarga..."></textarea>
+            </div>
+
+            <!-- Template WhatsApp Query -->
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" for="catInputWaQuery">Template Pesan WhatsApp</label>
+              <textarea id="catInputWaQuery" class="form-textarea" rows="2" placeholder="Halo MBell MakeUp, saya ingin tanya mengenai paket ini..."></textarea>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="button" class="btn btn-primary btn-block" id="btnUploadCatalogue" style="margin-top:1.25rem;">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              <span>Unggah Brosur Katalog</span>
+            </button>
+          </div>
+
+          <!-- Upload Progress Box -->
+          <div id="catUploadProgressBox" style="display:none; margin-top:1rem;">
+            <div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:600; margin-bottom:0.4rem;">
+              <span id="catUploadProgressText">Mengunggah...</span>
+              <span id="catUploadProgressPercent">0%</span>
+            </div>
+            <div style="background:#EFE8E5; height:8px; border-radius:4px; overflow:hidden;">
+              <div id="catUploadProgressBar" style="width:0%; height:100%; background:var(--primary); transition:width 0.2s ease;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Info Card -->
+        <div class="upload-tip-card">
+          <div class="upload-tip-icon">✨</div>
+          <div class="upload-tip-text">
+            <strong>Sinkronisasi Otomatis</strong>
+            <small>Setiap brosur yang diunggah otomatis tersimpan di folder <code>images_mbell/catalogue/</code> dan langsung tampil di 3D Folder animasi website <code>mbell-1</code>.</small>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Right Column: Daftar Brosur Katalog Aktif -->
+      <section class="gallery-section">
+        <div class="gallery-header" style="margin-bottom:1.25rem;">
+          <div class="gallery-title-group">
+            <div class="gallery-title">
+              <span>Brosur Katalog & S&K Aktif</span>
+              <span style="font-size:0.85rem; font-weight:normal; color:var(--text-muted);">(<span id="catalogueCount">0</span> brosur)</span>
+            </div>
+            <span class="selection-hint">💡 Klik "Preview" untuk zoom brosur, "Edit" untuk ubah teks atau ganti gambar</span>
+          </div>
+          <div class="gallery-controls">
+            <button type="button" class="btn btn-secondary btn-sm" id="btnRefreshCatalogue" title="Muat Ulang Katalog">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Catalogue Cards Grid -->
+        <div class="catalogue-grid" id="catalogueGrid">
+          <!-- Di-render dinamis oleh CatalogueView.js -->
+        </div>
+      </section>
+    </div>
+
+    <!-- ======================================================================
+         VIEW 3: MODE FOTO HERO & PROFIL (public.hero_images)
+         ====================================================================== -->
+    <div id="heroView" class="view-container hidden-view" style="display:none;">
+      <section class="gallery-section hero-manager-section" style="grid-column: 1 / -1;">
+        <div class="gallery-header">
+          <div class="gallery-title-group">
+            <h2>✨ Foto Hero, Banner & Profil About</h2>
+            <span class="selection-hint">Kelola gambar utama halaman landing website</span>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="btnRefreshHero">
+            🔄 Refresh Hero
+          </button>
+        </div>
+
+        <div class="hero-slots-grid" id="heroCardsContainer">
+          <!-- Di-render dinamis oleh HeroView.js -->
+        </div>
+      </section>
+    </div>
 
   </main>
 
@@ -543,6 +730,145 @@
     </div>
   </div>
 
+  <!-- ==========================================================================
+       MODAL: Edit Rincian Brosur Katalog
+       ========================================================================== -->
+  <div class="modal-backdrop" id="editCatalogueModal">
+    <div class="modal-content" style="max-width:560px;">
+      <div class="modal-header">
+        <h3>Edit Rincian Brosur Katalog</h3>
+        <button type="button" class="modal-close-btn" data-close-modal>
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editCatId">
+        <input type="hidden" id="editCatOldImageUrl">
+
+        <!-- Preview Flyer Saat Ini -->
+        <div class="catalogue-edit-preview-row">
+          <img id="editCatCurrentImg" src="" alt="Flyer" class="catalogue-edit-preview-img">
+          <div style="flex:1; min-width:0;">
+            <strong style="font-size:0.85rem; color:var(--text-dark); display:block; margin-bottom:4px;">Ganti File Gambar (Opsional)</strong>
+            <input type="file" id="editCatFileInput" class="form-input" accept="image/*" style="font-size:0.75rem; padding:4px 8px;">
+            <small id="editCatNewFileText" style="font-size:0.72rem; color:var(--primary); font-weight:600; display:block; margin-top:3px;"></small>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="editCatLabel">Judul Brosur / Paket *</label>
+          <input type="text" id="editCatLabel" class="form-input" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="editCatShortTitle">Kategori Singkat / Sub-Judul *</label>
+          <input type="text" id="editCatShortTitle" class="form-input" required>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label" for="editCatBadge">Tag / Badge</label>
+            <select id="editCatBadge" class="form-select">
+              <option value="Popular">Popular</option>
+              <option value="Favorite">Favorite</option>
+              <option value="Lengkap">Lengkap</option>
+              <option value="Penting">Penting</option>
+              <option value="Promo">Promo</option>
+              <option value="Baru">Baru</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="editCatOrder">Urutan Tampil (#)</label>
+            <input type="number" id="editCatOrder" class="form-input" min="0" max="99">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="editCatDesc">Deskripsi Ringkas Layanan</label>
+          <textarea id="editCatDesc" class="form-textarea" rows="2"></textarea>
+        </div>
+
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label" for="editCatWaQuery">Template Pesan WhatsApp</label>
+          <textarea id="editCatWaQuery" class="form-textarea" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal>Batal</button>
+        <button type="button" class="btn btn-primary" id="btnSaveEditCatalogue">Simpan Perubahan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL: Edit & Ganti Foto Hero & Profil
+       ========================================================================== -->
+  <div class="modal-backdrop" id="editHeroModal">
+    <div class="modal-content" style="max-width:560px;">
+      <div class="modal-header">
+        <h3>Edit & Ganti Foto: <span id="editHeroSlotName" style="color:var(--primary);">Hero</span></h3>
+        <button type="button" class="modal-close-btn" data-close-modal>
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Preview Foto Saat Ini -->
+        <div class="hero-edit-preview-row">
+          <img src="" id="editHeroCurrentImg" class="hero-edit-preview-img" alt="Foto Saat Ini" />
+          <div>
+            <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">FOTO SAAT INI DI WEBSITE</span>
+            <p style="font-size:0.8rem; color:var(--text-dark); margin-top:3px;">
+              Foto ini sedang aktif ditampilkan pada slot tersebut.
+            </p>
+          </div>
+        </div>
+
+        <!-- Dropzone untuk Ganti Foto Baru (Opsional) -->
+        <div class="form-group">
+          <label class="form-label">Ganti dengan Foto Baru (Opsional):</label>
+          <div class="dropzone-area" id="editHeroDropzone" style="padding:1rem; min-height:85px; text-align:center; cursor:pointer;">
+            <input type="file" id="editHeroFileInput" accept="image/jpeg,image/png,image/webp" style="display:none;" />
+            <div style="font-size:0.82rem; color:var(--primary); font-weight:600;" id="editHeroNewFileText">
+              Klik atau tarik foto baru ke sini (JPG, PNG, WebP)
+            </div>
+            <img id="editHeroNewFilePreview" src="" alt="Preview File Baru" style="display:none; max-height:80px; margin:0.5rem auto 0; border-radius:6px; border:1px solid var(--border-color);" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="editHeroInputTitle">Judul / Nama Slot:</label>
+          <input type="text" id="editHeroInputTitle" class="form-input" placeholder="Misal: Foto Utama Hero (Organic Arch)" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="editHeroInputSubtitle">Badge / Subtitle:</label>
+          <input type="text" id="editHeroInputSubtitle" class="form-input" placeholder="Misal: Certified MUA atau Founder & Lead MUA" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="editHeroInputAlt">Alt Text (Aksesibilitas & SEO):</label>
+          <input type="text" id="editHeroInputAlt" class="form-input" placeholder="Deskripsi singkat foto" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="editHeroInputDesc">Deskripsi / Quote Catatan:</label>
+          <textarea id="editHeroInputDesc" class="form-textarea" rows="2" placeholder="Keterangan atau quote pendukung..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal>Batal</button>
+        <button type="button" class="btn btn-primary" id="btnSaveEditHero">Simpan Perubahan</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toastContainer"></div>
 
@@ -563,11 +889,13 @@
   <script src="js/utils/WakeLockManager.js"></script>
   <script src="js/utils/ImageConverter.js"></script>
 
-  <!-- 5. Services Layer (Supabase, Storage, Photos, Categories) -->
+  <!-- 5. Services Layer (Supabase, Storage, Photos, Categories, Catalogue, Hero) -->
   <script src="js/services/SupabaseClient.js"></script>
   <script src="js/services/StorageService.js"></script>
   <script src="js/services/PhotoService.js"></script>
   <script src="js/services/CategoryService.js"></script>
+  <script src="js/services/CatalogueService.js"></script>
+  <script src="js/services/HeroService.js"></script>
 
   <!-- 6. Components Layer (UI Presentation) -->
   <script src="js/components/Toast.js"></script>
@@ -576,6 +904,8 @@
   <script src="js/components/DropzoneUploader.js"></script>
   <script src="js/components/GalleryView.js"></script>
   <script src="js/components/CategoryNav.js"></script>
+  <script src="js/components/CatalogueView.js"></script>
+  <script src="js/components/HeroView.js"></script>
 
   <!-- 7. Controllers Layer (Workflow & Coordination) -->
   <script src="js/controllers/SelectionManager.js"></script>

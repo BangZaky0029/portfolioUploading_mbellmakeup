@@ -3,7 +3,7 @@
  * MBell MakeUp Portfolio Studio (Universal Zero-CORS OOP Architecture)
  */
 
-(function(global) {
+(function (global) {
   'use strict';
   global.MBell = global.MBell || {};
 
@@ -28,7 +28,13 @@
     updatePhoto: (id, u, curr) => MB.photoServiceInstance.updatePhoto(id, u, curr),
     updatePhotosCategoryBatch: (p, c) => MB.photoServiceInstance.updatePhotosCategoryBatch(p, c),
     deletePhoto: (id, url) => MB.photoServiceInstance.deletePhoto(id, url),
-    deletePhotosBatch: (p) => MB.photoServiceInstance.deletePhotosBatch(p)
+    deletePhotosBatch: (p) => MB.photoServiceInstance.deletePhotosBatch(p),
+    getCatalogues: () => MB.catalogueServiceInstance.getCatalogues(),
+    uploadCatalogue: (f, m, p) => MB.catalogueServiceInstance.uploadCatalogue(f, m, p),
+    updateCatalogue: (id, u, f, o, p) => MB.catalogueServiceInstance.updateCatalogue(id, u, f, o, p),
+    deleteCatalogue: (id, url) => MB.catalogueServiceInstance.deleteCatalogue(id, url),
+    getHeroImages: () => MB.heroServiceInstance.getHeroImages(),
+    updateHeroImage: (id, m, f, c, p) => MB.heroServiceInstance.updateHeroImage(id, m, f, c, p)
   };
 
   // Inisialisasi saat DOM siap

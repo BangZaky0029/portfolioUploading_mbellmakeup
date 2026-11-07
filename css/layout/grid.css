@@ -14,3 +14,12 @@
   align-items: start;
 }
 
+/* View Container for Mode Switcher (Portfolio vs Catalogue) */
+.view-container {
+  display: contents;
+}
+
+.view-container.hidden-view {
+  display: none !important;
+}
+

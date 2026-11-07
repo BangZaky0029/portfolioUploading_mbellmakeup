@@ -1,0 +1,300 @@
+/**
+ * Hero & Profile Manager Styles
+ * MBell MakeUp Portfolio Studio
+ */
+
+/* ==========================================================================
+   1. Hero Slots Grid & Container
+   ========================================================================== */
+.hero-manager-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.hero-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.75rem;
+}
+
+.hero-slot-card {
+  background: var(--bg-card, #FFFFFF);
+  border: 1px solid var(--border-color, #E6D7D2);
+  border-radius: 20px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 4px 20px rgba(42, 33, 33, 0.04);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  position: relative;
+}
+
+.hero-slot-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(158, 90, 84, 0.12);
+  border-color: rgba(158, 90, 84, 0.4);
+}
+
+.hero-slot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.hero-slot-badge-type {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  background: rgba(158, 90, 84, 0.1);
+  color: var(--primary, #9E5A54);
+}
+
+.hero-slot-indicator-active {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #10B981;
+}
+
+.hero-slot-indicator-linked {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #B45309;
+}
+
+/* ==========================================================================
+   2. Mockup Previews (Arch Hero, Portrait About, & Mini S&K)
+   ========================================================================== */
+.hero-arch-mockup-wrapper,
+.hero-about-mockup-wrapper,
+.hero-sk-mockup-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem 0;
+  background: #FAF7F5;
+  border-radius: 16px;
+  margin-bottom: 1.15rem;
+  border: 1px dashed rgba(230, 215, 210, 0.8);
+}
+
+/* Slot 1: Organic Arch Hero */
+.hero-arch-mockup {
+  position: relative;
+  width: 180px;
+  aspect-ratio: 4 / 5;
+  border-top-left-radius: 9999px;
+  border-top-right-radius: 9999px;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 12px 28px rgba(158, 90, 84, 0.2);
+  border: 3px solid #FFFFFF;
+}
+
+.hero-arch-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  transition: transform 0.4s ease;
+}
+
+.hero-arch-mockup:hover .hero-arch-img {
+  transform: scale(1.05);
+}
+
+.hero-arch-badge-pill {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted, #7A6966);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(230, 215, 210, 0.8);
+}
+
+/* Slot 2: About Bella Portrait */
+.hero-about-mockup {
+  position: relative;
+  width: 180px;
+  aspect-ratio: 4 / 5;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 12px 28px rgba(42, 33, 33, 0.12);
+  border: 3px solid #FFFFFF;
+}
+
+.hero-about-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+  transition: transform 0.4s ease;
+}
+
+.hero-about-mockup:hover .hero-about-img {
+  transform: scale(1.05);
+}
+
+.hero-about-quote-pill {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
+  padding: 5px 8px;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(230, 215, 210, 0.8);
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-about-quote-pill em {
+  font-size: 0.65rem;
+  font-family: serif;
+  color: var(--text-dark, #2A2121);
+  line-height: 1.25;
+}
+
+.hero-about-quote-pill small {
+  font-size: 0.58rem;
+  color: var(--primary, #9E5A54);
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+/* Slot 3: Floating S&K Mini */
+.hero-sk-mockup {
+  position: relative;
+  width: 140px;
+  aspect-ratio: 3 / 4;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  border: 3px solid #FFFFFF;
+}
+
+.hero-sk-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  transition: transform 0.4s ease;
+}
+
+.hero-sk-mockup:hover .hero-sk-img {
+  transform: scale(1.05);
+}
+
+.hero-sk-overlay-badge {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(43, 33, 32, 0.85);
+  backdrop-filter: blur(4px);
+  color: #FFF;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 4px;
+  text-align: center;
+}
+
+/* ==========================================================================
+   3. Slot Details & Actions
+   ========================================================================== */
+.hero-slot-info {
+  margin-bottom: 1.25rem;
+}
+
+.hero-slot-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-dark, #2A2121);
+  margin-bottom: 0.35rem;
+}
+
+.hero-slot-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted, #7A6966);
+  line-height: 1.45;
+  margin-bottom: 0.75rem;
+}
+
+.hero-slot-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-muted, #7A6966);
+  background: rgba(250, 247, 245, 0.8);
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+}
+
+.hero-slot-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(230, 215, 210, 0.6);
+}
+
+.hero-slot-actions .btn {
+  flex: 1;
+  justify-content: center;
+  font-size: 0.78rem;
+  padding: 0.5rem 0.6rem;
+}
+
+.btn-outline-primary {
+  background: transparent;
+  border: 1px solid var(--primary, #9E5A54);
+  color: var(--primary, #9E5A54);
+  font-weight: 600;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-outline-primary:hover {
+  background: rgba(158, 90, 84, 0.08);
+  color: var(--primary-hover, #854843);
+}
+
+/* Modal Edit Hero Preview */
+.hero-edit-preview-row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.75rem;
+  background: var(--bg-surface, #F4EBE6);
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+
+.hero-edit-preview-img {
+  width: 70px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #E6D7D2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+

@@ -17,10 +17,13 @@
   .header {
     position: static;
     top: auto;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
   .main-wrapper {
     grid-template-columns: 1fr;
     padding: 1rem;
+    padding-bottom: 5.5rem; /* Ruang scroll agar konten terbawah tidak tertutup floating bottom mode bar */
   }
   .sidebar-panel {
     position: static;

@@ -41,6 +41,10 @@ const config = {
   SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || envVars.SUPABASE_ANON_KEY || '',
   BUCKET_NAME: process.env.BUCKET_NAME || envVars.BUCKET_NAME || 'images_mbell',
   TABLE_NAME: process.env.TABLE_NAME || envVars.TABLE_NAME || 'images',
+  TABLE_CATALOGUE: process.env.TABLE_CATALOGUE || envVars.TABLE_CATALOGUE || 'catalogue',
+  CATALOGUE_FOLDER: process.env.CATALOGUE_FOLDER || envVars.CATALOGUE_FOLDER || 'catalogue',
+  TABLE_HERO: process.env.TABLE_HERO || envVars.TABLE_HERO || 'hero_images',
+  HERO_FOLDER: process.env.HERO_FOLDER || envVars.HERO_FOLDER || 'heroImages',
   MAX_FILE_SIZE_MB: Number(process.env.MAX_FILE_SIZE_MB || envVars.MAX_FILE_SIZE_MB) || 30,
   MAX_BATCH_UPLOAD: Number(process.env.MAX_BATCH_UPLOAD || envVars.MAX_BATCH_UPLOAD) || 20,
   DEFAULT_CATEGORIES: []

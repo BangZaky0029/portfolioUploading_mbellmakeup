@@ -30,13 +30,26 @@
       });
     }
 
-    open(photo) {
+    open(photo, maybeTitle) {
       if (!photo) return;
       const els = this.elements;
       if (!els.modal) return;
 
+      if (typeof photo === 'string') {
+        photo = {
+          imageUrl: photo,
+          title: maybeTitle || 'Foto Hero & Profil',
+          category: 'Hero / Banner',
+          id: ''
+        };
+      }
+
       els.title.textContent = photo.title || 'Foto Portofolio';
-      els.category.textContent = `Kategori: ${photo.category || '-'} • ID: #${photo.id}`;
+      if (photo.id) {
+        els.category.textContent = `Kategori: ${photo.category || '-'} • ID: #${photo.id}`;
+      } else {
+        els.category.textContent = `${photo.category || 'Preview Foto'}`;
+      }
       els.img.src = photo.imageUrl || '';
       els.openNewTab.href = photo.imageUrl || '#';
 

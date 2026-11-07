@@ -19,6 +19,8 @@
       this.storageService = MB.storageServiceInstance;
       this.photoService = MB.photoServiceInstance;
       this.categoryService = MB.categoryServiceInstance;
+      this.catalogueService = MB.catalogueServiceInstance;
+      this.heroService = MB.heroServiceInstance;
 
       // Components
       this.modal = MB.modalManagerInstance;
@@ -44,6 +46,26 @@
         store: this.store,
         events: this.events
       });
+
+      if (MB.CatalogueView) {
+        this.catalogueView = new MB.CatalogueView({
+          catalogueService: this.catalogueService,
+          modalManager: this.modal,
+          toast: this.toast,
+          lightbox: this.lightbox,
+          events: this.events
+        });
+      }
+
+      if (MB.HeroView) {
+        this.heroView = new MB.HeroView({
+          heroService: this.heroService,
+          modalManager: this.modal,
+          toast: this.toast,
+          lightbox: this.lightbox,
+          events: this.events
+        });
+      }
 
       // Controllers
       this.selectionManager = new MB.SelectionManager({

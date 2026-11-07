@@ -56,6 +56,16 @@
       });
     }
 
+    open(modalId) {
+      const modal = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
+      if (modal) modal.classList.add('active');
+    }
+
+    close(modalId) {
+      const modal = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
+      if (modal) modal.classList.remove('active');
+    }
+
     alert({ title = 'Pemberitahuan', message, type = 'warning' }) {
       return new Promise((resolve) => {
         const els = this.elements;

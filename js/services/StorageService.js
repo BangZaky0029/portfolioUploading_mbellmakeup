@@ -71,6 +71,11 @@
       }
     }
 
+    async deleteFile(storagePath) {
+      if (!storagePath) return;
+      return await this.deleteFiles([storagePath]);
+    }
+
     extractPath(imageUrl) {
       const formatters = global.MBell.Formatters;
       if (formatters && typeof formatters.extractStoragePath === 'function') {
